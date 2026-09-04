@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { auth } from '../../lib/auth';
 import { LoadingState } from '../../components/LoadingState';
+import { Workouts } from '../workouts/Workouts';
 
-type Profile = { display_name: string; timezone: string };
+type Profile = { id: string; display_name: string; timezone: string };
 export function AccountHome() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState('');
@@ -72,21 +73,7 @@ export function AccountHome() {
             {error} <button onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
           </div>
         )}
-        {profile && (
-          <>
-            <p>Sua conta está pronta para o próximo passo.</p>
-            <div className="empty-workouts">
-              <span className="empty-icon" aria-hidden="true">
-                ＋
-              </span>
-              <h2>Vamos começar pela sua ficha.</h2>
-              <p>
-                A criação de treinos será a próxima funcionalidade do GymLog. Seu perfil já está
-                salvo para acompanhar essa evolução.
-              </p>
-            </div>
-          </>
-        )}
+        {profile && <Workouts userId={profile.id} />}
       </section>
     </main>
   );

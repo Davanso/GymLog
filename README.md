@@ -27,7 +27,7 @@ O **GymLog** nasce para reunir essas informações em um diário de treino simpl
 
 A experiência planejada é direta: escolher os exercícios, montar o treino e registrar séries, repetições e cargas. Um catálogo com demonstrações em GIF vai servir de referência visual durante a consulta dos exercícios.
 
-> **Estado atual:** frontend e backend mínimo preparados, com conexão ao Neon. As 12 tabelas da aplicação, relações, índices, políticas de acesso e um catálogo inicial já foram aplicados. Login, cadastro, recuperação de senha e perfil protegido estão implementados; a validação real depende da configuração do Neon Auth. Consulte o [guia de autenticação](docs/authentication.md). As telas de treino ainda serão implementadas.
+> **Estado atual:** login e email funcionando; fichas, sessões com registro de séries e timer de descanso implementados. Dados privados protegidos por sessão e RLS no Neon. Consulte os guias de [autenticação](docs/authentication.md) e [treinos e descanso](docs/workouts.md).
 
 ## Funcionalidades
 
@@ -35,14 +35,15 @@ O que queremos construir:
 
 | Recurso | O que você poderá fazer | Status |
 | --- | --- | --- |
-| 📝 Registro de treinos | Anotar os exercícios realizados em cada treino | Planejado |
-| 🏋️ Cargas e repetições | Registrar carga, séries e repetições por exercício | Planejado |
-| 📚 Catálogo de exercícios | Consultar e escolher exercícios para montar seus treinos | Planejado |
+| 📝 Registro de treinos | Criar fichas e registrar sessões de treino | Implementado |
+| 🏋️ Cargas e repetições | Registrar carga, séries e repetições por exercício | Implementado |
+| 📚 Catálogo de exercícios | Escolher exercícios do catálogo local para montar fichas | Implementado (12 exercícios) |
 | 🎞️ Demonstrações em GIF | Visualizar uma referência de execução de cada exercício | Planejado |
-| 📈 Histórico | Consultar registros anteriores e acompanhar a evolução | Planejado |
-| 💾 Persistência | Salvar os dados para continuar de onde parou | Planejado |
+| 📈 Histórico | Consultar as séries dos treinos recentes | Implementado; gráficos futuros |
+| 💾 Persistência | Salvar fichas e séries; retomar treino em andamento | Implementado |
+| ⏱️ Descanso | Timer automático com pausa, +30 s e aviso sonoro opcional | Implementado |
 
-O banco escolhido é PostgreSQL 18 no Neon. A integração de catálogo com **AscendAPI / ExerciseDB V2** já consulta exercícios, imagens e vídeos pelo backend. A interface do catálogo e o vínculo com os exercícios locais ainda serão implementados. O endpoint exige login. As mídias retornadas pelo fornecedor não são necessariamente GIFs.
+O banco escolhido é PostgreSQL 18 no Neon. A integração de catálogo com **AscendAPI / ExerciseDB V2** já consulta exercícios, imagens e vídeos pelo backend. A seleção nas fichas usa o catálogo local. A interface de mídias externas e o vínculo com o fornecedor ainda serão implementados. O endpoint exige login. As mídias retornadas pelo fornecedor não são necessariamente GIFs.
 
 ## API de exercícios e imagens
 

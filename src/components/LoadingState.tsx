@@ -1,9 +1,16 @@
 import { createPortal } from 'react-dom';
+import { useEffect, useState } from 'react';
 import './LoadingState.css';
 
 type LoadingStateProps = { label?: string };
 
 export function LoadingState({ label = 'Abrindo seu GymLog…' }: LoadingStateProps) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), 250);
+    return () => window.clearTimeout(timer);
+  }, []);
+  if (!visible) return null;
   return createPortal(
     <span className="gym-loading" role="status" aria-live="polite">
       <span className="gym-loading__stage" aria-hidden="true">
