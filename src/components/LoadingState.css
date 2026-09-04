@@ -1,0 +1,95 @@
+.gym-loading {
+  --loading-cycle: 1.8s;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #f1f5f9;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  color: var(--blue);
+  text-align: center;
+}
+.gym-loading__stage {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 108px;
+}
+.gym-loading__jump {
+  position: absolute;
+  bottom: 12px;
+  left: 20px;
+  width: 80px;
+  height: 48px;
+  animation: gym-loading-jump var(--loading-cycle) infinite;
+}
+.gym-loading__weight {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: gym-loading-spin var(--loading-cycle) infinite;
+}
+.gym-loading__shadow {
+  position: absolute;
+  bottom: 0;
+  left: 28px;
+  width: 64px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.16;
+  animation: gym-loading-shadow var(--loading-cycle) infinite;
+}
+.gym-loading__label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--muted);
+}
+@keyframes gym-loading-jump {
+  0%,
+  12%,
+  78%,
+  100% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  43% {
+    transform: translateY(-80%);
+    animation-timing-function: ease-in;
+  }
+}
+@keyframes gym-loading-spin {
+  0%,
+  12% {
+    transform: rotate(-12deg);
+  }
+  78%,
+  100% {
+    transform: rotate(348deg);
+  }
+}
+@keyframes gym-loading-shadow {
+  0%,
+  12%,
+  78%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.16;
+  }
+  43% {
+    transform: scaleX(0.5);
+    opacity: 0.07;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gym-loading__jump,
+  .gym-loading__weight,
+  .gym-loading__shadow {
+    animation: none;
+  }
+}

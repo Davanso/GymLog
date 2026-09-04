@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { auth, authMessage } from '../../lib/auth';
+import { LoadingState } from '../../components/LoadingState';
 
 type Mode = 'login' | 'signup' | 'forgot' | 'reset' | 'verify';
 const modes: Record<string, Mode> = {
@@ -224,7 +225,14 @@ export function AuthPage({ serviceError = false }: { serviceError?: boolean }) {
                 </p>
               )}
               <button className="primary-button" disabled={busy || (mode === 'reset' && !token)}>
-                {busy ? 'Aguarde…' : labels[mode]}
+                {busy ? (
+                  <>
+                    Aguarde…
+                    <LoadingState label="Aguarde…" />
+                  </>
+                ) : (
+                  labels[mode]
+                )}
                 <span aria-hidden="true">→</span>
               </button>
             </form>

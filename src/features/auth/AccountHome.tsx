@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { auth } from '../../lib/auth';
+import { LoadingState } from '../../components/LoadingState';
 
 type Profile = { display_name: string; timezone: string };
 export function AccountHome() {
@@ -49,12 +50,23 @@ export function AccountHome() {
           GYM<span>LOG</span>
         </a>
         <button className="secondary-button" onClick={logout} disabled={busy}>
-          {busy ? 'Saindo…' : 'Sair da conta'}
+          {busy ? (
+            <>
+              Saindo…
+              <LoadingState label="Saindo…" />
+            </>
+          ) : (
+            'Sair da conta'
+          )}
         </button>
       </header>
       <section className="account-content">
         <p className="eyebrow">SEU ESPAÇO</p>
-        <h1>{profile ? `Olá, ${profile.display_name}.` : 'Preparando seu espaço…'}</h1>
+        {profile ? (
+          <h1>Olá, {profile.display_name}.</h1>
+        ) : (
+          !error && <LoadingState label="Preparando seu espaço…" />
+        )}
         {error && (
           <div className="message error" role="alert">
             {error} <button onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
