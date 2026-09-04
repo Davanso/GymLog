@@ -27,7 +27,7 @@ O **GymLog** nasce para reunir essas informações em um diário de treino simpl
 
 A experiência planejada é direta: escolher os exercícios, montar o treino e registrar séries, repetições e cargas. Um catálogo com demonstrações em GIF vai servir de referência visual durante a consulta dos exercícios.
 
-> **Estado atual:** o projeto está na etapa de setup. React, TypeScript, Tailwind e a configuração de deploy estão preparados, com uma página inicial provisória. As funcionalidades de treino e o banco de dados ainda não foram implementados.
+> **Estado atual:** o projeto está na etapa de setup. React, TypeScript, Tailwind e a configuração de deploy estão preparados, com uma página inicial provisória. O backend mínimo usa Vercel Functions e o driver do Neon. As tabelas, funcionalidades de treino e autenticação ainda não foram implementadas.
 
 ## Funcionalidades
 
@@ -42,7 +42,7 @@ O que queremos construir:
 | 📈 Histórico | Consultar registros anteriores e acompanhar a evolução | Planejado |
 | 💾 Persistência | Salvar os dados para continuar de onde parou | Planejado |
 
-A tecnologia do banco e a fonte dos GIFs ainda serão definidas. Login e sincronização entre dispositivos também dependem dessa próxima etapa.
+O banco escolhido é PostgreSQL 18 no Neon. A fonte dos GIFs ainda será definida. Login e sincronização entre dispositivos também dependem dessa próxima etapa.
 
 ## Stack
 
@@ -53,9 +53,10 @@ A tecnologia do banco e a fonte dos GIFs ainda serão definidas. Login e sincron
 | **Vite 8** | Servidor de desenvolvimento e build de produção |
 | **Tailwind CSS 4** | Estilização da interface, integrado pelo plugin do Vite |
 | **ESLint** | Análise estática e regras para o código |
-| **Vercel** | Plataforma prevista para publicar a aplicação |
+| **Vercel** | Hospedagem do frontend e das funções do backend |
+| **Neon / PostgreSQL 18** | Banco de dados em São Paulo |
 
-O GymLog é uma **SPA (Single Page Application)** em React, sem Next.js. A configuração da Vercel está versionada em `vercel.json`; isso prepara o deploy, mas não significa que o app já esteja publicado.
+O GymLog é uma **SPA (Single Page Application)** em React, sem Next.js. O frontend já está publicado na Vercel. A configuração das funções e da SPA está versionada em `vercel.json`.
 
 ## Como executar
 
@@ -81,7 +82,7 @@ npm run dev
 
 Abra o endereço informado pelo Vite no terminal, normalmente `http://localhost:5173`.
 
-**O setup atual não exige banco, conta externa ou variáveis de ambiente.**
+**O frontend pode rodar sem banco. Para executar a API, configure `DATABASE_URL` no `.env`.**
 
 ### Comandos disponíveis
 
@@ -136,9 +137,47 @@ Com o código disponível em um repositório Git:
 | Framework preset | `Vite` |
 | Build command | `npm run build` |
 | Output directory | `dist` |
-| Variáveis de ambiente | Nenhuma nesta etapa |
+| Variáveis de ambiente | `DATABASE_URL` para a API |
 
 O arquivo `vercel.json` já define o build, a pasta de saída e o redirecionamento interno para `index.html`. Esse fallback prepara a hospedagem para futuras rotas da SPA; o roteamento da aplicação ainda não foi implementado.
+
+## Backend mínimo
+
+A API fica em `api/` e roda como Vercel Functions em São Paulo. O código compartilhado do servidor fica em `server/`, separado do frontend. Não é necessário Next.js ou um servidor Express.
+
+| Arquivo | Responsabilidade |
+| --- | --- |
+| `api/health.ts` | Endpoint de diagnóstico da conexão |
+| `server/db.ts` | Acesso ao Neon via driver serverless HTTP |
+| `tsconfig.server.json` | Verificação de tipos do backend |
+
+### Verificar a conexão
+
+`GET /api/health` executa apenas `SELECT 1` e retorna:
+
+```json
+{ "status": "ok", "database": "connected" }
+```
+
+Quando a variável estiver ausente ou o banco não responder, retorna HTTP 503 com uma mensagem genérica. Outros métodos retornam 405. A resposta não é armazenada em cache e a consulta tem timeout de 8 segundos. Nenhuma credencial ou dado de usuário é retornado. Esse endpoint consulta o banco e pode acordar um compute suspenso; evite monitoramento frequente.
+
+### Desenvolvimento com API
+
+Com uma versão atual da Vercel CLI instalada (`npm install -g vercel@latest`) e o projeto vinculado, execute:
+
+```bash
+npm run dev:full
+```
+
+Esse comando executa `vercel dev`, que serve o frontend e as funções. `npm run dev` executa apenas o Vite. Use o endereço mostrado no terminal, seguido de `/api/health`.
+
+```bash
+npm run test:backend
+npm run typecheck
+npm run build
+```
+
+Os testes verificam a rejeição de métodos de escrita e a resposta segura sem configuração. As futuras rotas de treinos deverão validar a sessão e restringir o acesso aos dados do usuário antes de serem publicadas.
 
 ## Roadmap
 
@@ -147,7 +186,8 @@ O arquivo `vercel.json` já define o build, a pasta de saída e o redirecionamen
 - [x] Configurar ESLint e verificação de tipos
 - [x] Criar página inicial provisória
 - [x] Preparar configuração de deploy na Vercel
-- [ ] Definir e integrar um banco de dados simples
+- [x] Integrar a conexão com PostgreSQL no Neon
+- [ ] Criar as tabelas de exercícios e treinos
 - [ ] Criar catálogo e seleção de exercícios
 - [ ] Adicionar demonstrações em GIF
 - [ ] Permitir criar e registrar treinos
@@ -223,6 +263,22 @@ node --test scripts/commit-format.test.js
 A tabela e as regras ficam em `scripts/commit-format.js`. O hook usa essa mesma tabela para normalizar e validar as mensagens.
 
 ## Cuidados com a configuração
+
+### Ambiente do backend / Neon
+
+O banco do GymLog usa PostgreSQL 18 no Neon, na região **AWS South America East 1 — São Paulo (`sa-east-1`)**. O `vercel.json` configura as Vercel Functions para **São Paulo (`gru1`)**, conforme a [lista de regiões da Vercel](https://vercel.com/docs/regions).
+
+O arquivo local `.env`, na raiz do projeto, está preparado para receber a conexão:
+
+```dotenv
+DATABASE_URL=""
+```
+
+Cole entre as aspas a connection string completa fornecida pelo Neon, mantendo os parâmetros de conexão. Não cole o comando `psql`, apenas a URL. Esse arquivo é ignorado pelo Git; `.env.example` é o modelo versionado para outras instalações.
+
+Na Vercel, cadastre `DATABASE_URL` nas variáveis de ambiente do projeto para o ambiente desejado e faça um novo deploy. O arquivo local não é enviado à Vercel: `.vercelignore` exclui os arquivos `.env*` do upload. Para previews, use uma branch de desenvolvimento do banco.
+
+A conexão está implementada em `server/db.ts`, usando `process.env.DATABASE_URL`. A URL e o módulo de banco nunca devem ser importados pelo código em `src/`. As tabelas e o Neon Auth ainda serão implementados.
 
 Arquivos `.env`, dependências e saídas de build estão cobertos pelo `.gitignore`. Quando integrações forem adicionadas, documente as variáveis necessárias em um `.env.example`, sem valores secretos.
 
