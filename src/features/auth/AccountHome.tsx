@@ -72,7 +72,6 @@ export function AccountHome() {
                 A criação de treinos será a próxima funcionalidade do GymLog. Seu perfil já está
                 salvo para acompanhar essa evolução.
               </p>
-              <p className="account-meta">Fuso horário: {profile.timezone}</p>
             </div>
           </>
         )}

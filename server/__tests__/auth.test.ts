@@ -19,7 +19,7 @@ test('auth proxy and protected routes enforce origin, method and verified sessio
   let remoteCalls = 0;
   let forwardedOrigin = '';
   let forwardedBody = '';
-  process.env.NEON_AUTH_BASE_URL = 'https://ep-test.neonauth.sa-east-1.aws.neon.build/neondb/auth';
+  process.env.NEON_AUTH_BASE_URL = 'https://ep-test.neonauth.sa-east-1.aws.neon.tech/neondb/auth';
   process.env.NEON_AUTH_COOKIE_SECRET = 'test-cookie-secret-with-at-least-thirty-two-characters';
   const server = createServer(async (req, res) => {
     if (req.url?.startsWith('/api/auth')) return authHandler(req, res);

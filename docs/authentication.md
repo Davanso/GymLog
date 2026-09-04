@@ -97,3 +97,9 @@ Sem `NEON_AUTH_BASE_URL`, o sistema falha de forma fechada com 503. A implementa
 
 - [Toolkit oficial para adapters de servidor](https://github.com/neondatabase/neon-js/blob/main/packages/auth/BUILDING-AN-ADAPTER.md)
 - [SDK de autenticação e adapter React](https://github.com/neondatabase/neon-js/tree/main/packages/auth)
+
+## Configuração verificada em 04/09/2026
+
+A Auth URL foi obtida da branch production do projeto gymlog e cadastrada no .env local e na Vercel Production. O domínio HTTPS do GymLog foi cadastrado como confiável. Allow Localhost, cadastro/login por email e o servidor de email compartilhado do Neon já estavam habilitados. A confirmação obrigatória no cadastro está desabilitada na configuração atual.
+
+A URL desta região usa o domínio neonauth.sa-east-1.aws.neon.tech, aceito pelo backend junto ao formato neon.build. Foram verificados contra o serviço real: sessão anônima (200/null), rejeição das APIs privadas sem login (401) e conexão ao banco (200). Cadastro, perfil autenticado e entrega dos emails ainda precisam de teste com uma conta do usuário.

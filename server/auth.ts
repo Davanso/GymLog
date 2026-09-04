@@ -14,7 +14,10 @@ export function authConfig() {
   const url = new URL(baseUrl);
   if (
     url.protocol !== 'https:' ||
-    !url.hostname.endsWith('.neon.build') ||
+    !(
+      url.hostname.endsWith('.neon.build') ||
+      /^ep-[a-z0-9-]+\.neonauth\.[a-z0-9-]+\.aws\.neon\.tech$/.test(url.hostname)
+    ) ||
     url.username ||
     url.password ||
     url.search ||
