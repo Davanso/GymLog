@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { test } from 'node:test';
 import { createCatalogHandler } from '../catalog-handler.js';
 import { CatalogError, createExerciseProvider, parseCatalogRequest } from '../exercise-provider.js';
-import { standardMuscleGroup } from '../muscle-group-map.js';
+import { primaryMuscleGroup, standardMuscleGroup } from '../muscle-group-map.js';
 
 const config = { RAPIDAPI_KEY: 'test-secret' };
 const sample = {
@@ -20,6 +20,9 @@ test('consolidates provider anatomy into the editable GymLog groups', () => {
   assert.equal(standardMuscleGroup('TRAPEZIUS UPPER FIBERS'), 'Costas');
   assert.equal(standardMuscleGroup('TENSOR FASCIAE LATAE'), 'Abdômen');
   assert.equal(standardMuscleGroup('unknown provider value'), 'Outros');
+  assert.equal(primaryMuscleGroup(['CHEST'], ['SERRATUS ANTERIOR']), 'Peito');
+  assert.equal(primaryMuscleGroup(['THIGHS'], ['QUADRICEPS']), 'Quadríceps');
+  assert.equal(primaryMuscleGroup(['UPPER ARMS'], ['TRICEPS BRACHII']), 'Tríceps');
 });
 
 test('validates filters, pagination and rejects arbitrary upstream URLs', () => {

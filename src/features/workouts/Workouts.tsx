@@ -15,7 +15,7 @@ export function Workouts({
   registerNavigationGuard: (guard: ((action: () => void) => void) | null) => void;
 }) {
   const { requestConfirmation, confirmation } = useConfirmation();
-  const cacheKey = `gymlog:dashboard:v2:${userId}`;
+  const cacheKey = `gymlog:dashboard:v3:${userId}`;
   const [data, setData] = useState<WorkoutDashboard | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem(cacheKey) || 'null');

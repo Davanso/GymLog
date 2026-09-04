@@ -54,6 +54,40 @@ export const muscleGroupMap: Record<string, string> = {
   'TRICEPS BRACHII': 'Tríceps',
 };
 
+/** Correções pontuais para classificações inconsistentes do fornecedor. */
+export const exerciseGroupOverrides: Record<string, string> = {
+  exr_41n2huf7mAC2rhfC: 'Quadríceps', // Agachamento com salto com halteres
+  exr_41n2hGRSg9WCoTYT: 'Quadríceps', // Agachamento pistol com salto
+  exr_41n2haNJ3NA8yCE2: 'Peito', // Supino inclinado unilateral com halter
+  exr_41n2hGioS8HumEF7: 'Bíceps', // Rosca martelo
+  exr_41n2hgCHNgtVLHna: 'Bíceps', // Rosca martelo cruzada
+};
+
 export function standardMuscleGroup(value: string) {
   return muscleGroupMap[value.toUpperCase()] || 'Outros';
+}
+
+const bodyPartGroup: Record<string, string> = {
+  BACK: 'Costas',
+  BICEPS: 'Bíceps',
+  CALVES: 'Panturrilhas',
+  CHEST: 'Peito',
+  FOREARMS: 'Antebraços',
+  'FULL BODY': 'Corpo inteiro',
+  HAMSTRINGS: 'Posteriores de coxa',
+  NECK: 'Pescoço',
+  QUADRICEPS: 'Quadríceps',
+  SHOULDERS: 'Ombros',
+  TRICEPS: 'Tríceps',
+  WAIST: 'Abdômen',
+};
+
+export function primaryMuscleGroup(
+  bodyParts: string[],
+  targetMuscles: string[],
+  externalId?: string,
+) {
+  if (externalId && exerciseGroupOverrides[externalId]) return exerciseGroupOverrides[externalId];
+  const bodyPart = bodyParts[0]?.toUpperCase();
+  return bodyPartGroup[bodyPart] || standardMuscleGroup(targetMuscles[0] || '');
 }

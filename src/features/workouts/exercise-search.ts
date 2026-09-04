@@ -11,7 +11,7 @@ export function matchesExercise(exercise: Exercise, query: string, muscle = '') 
   const groups = exercise.muscle_groups || [];
   const text = normalize([exercise.name, exercise.equipment, ...groups].join(' '));
   return (
-    (!muscle || groups.includes(muscle)) &&
+    (!muscle || (exercise.primary_muscle_groups || groups).includes(muscle)) &&
     normalize(query)
       .split(/\s+/)
       .every((word) => text.includes(word))

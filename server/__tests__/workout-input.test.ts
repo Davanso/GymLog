@@ -52,6 +52,8 @@ test('exercise search combines muscle groups, equipment and name without accents
     name: 'Supino reto',
     equipment: 'Barra',
     muscle_groups: ['Peito', 'Tríceps'],
+    primary_muscle_groups: ['Peito'],
+    secondary_muscle_groups: ['Tríceps'],
     tracking_mode: 'reps',
     load_mode: 'external',
     load_convention: 'total',
@@ -60,6 +62,7 @@ test('exercise search combines muscle groups, equipment and name without accents
   assert.equal(matchesExercise(exercise, 'peito barra'), true);
   assert.equal(matchesExercise(exercise, 'SUPINO', 'Peito'), true);
   assert.equal(matchesExercise(exercise, '', 'Costas'), false);
+  assert.equal(matchesExercise(exercise, '', 'Tríceps'), false);
   assert.equal(matchesExercise(exercise, 'pernas'), false);
 });
 

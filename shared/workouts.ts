@@ -3,6 +3,8 @@ export type Exercise = {
   name: string;
   equipment: string;
   muscle_groups: string[];
+  primary_muscle_groups: string[];
+  secondary_muscle_groups: string[];
   tracking_mode: 'reps' | 'duration';
   load_mode: 'external' | 'bodyweight' | 'assisted';
   load_convention: string;

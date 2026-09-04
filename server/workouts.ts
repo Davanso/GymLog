@@ -65,7 +65,11 @@ export function workoutStore(db: PoolClient, userId: string) {
         (SELECT md.url FROM exercise_media md WHERE md.exercise_id=e.id AND md.kind='image' ORDER BY md.position LIMIT 1) image_url,
         (SELECT md.url FROM exercise_media md WHERE md.exercise_id=e.id AND md.kind='video' ORDER BY md.position LIMIT 1) video_url,
         ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
-          WHERE em.exercise_id=e.id ORDER BY em.role,m.name) AS muscle_groups
+          WHERE em.exercise_id=e.id ORDER BY em.role,m.name) AS muscle_groups,
+        ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
+          WHERE em.exercise_id=e.id AND em.role='primary' ORDER BY m.name) AS primary_muscle_groups,
+        ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
+          WHERE em.exercise_id=e.id AND em.role='secondary' ORDER BY m.name) AS secondary_muscle_groups
         FROM exercises e JOIN equipment q ON q.id=e.equipment_id WHERE e.archived_at IS NULL ORDER BY e.name`,
     );
     const active = await db.query(

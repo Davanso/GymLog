@@ -79,9 +79,13 @@ export function TemplateEditor({
     });
   }
   const filtered = exercises.filter((exercise) => matchesExercise(exercise, search, muscle));
-  const muscles = [...new Set(exercises.flatMap((exercise) => exercise.muscle_groups || []))].sort(
-    (a, b) => a.localeCompare(b, 'pt-BR'),
-  );
+  const muscles = [
+    ...new Set(
+      exercises.flatMap(
+        (exercise) => exercise.primary_muscle_groups || exercise.muscle_groups || [],
+      ),
+    ),
+  ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   return (
     <form
       className="workout-editor"
@@ -163,7 +167,10 @@ export function TemplateEditor({
                       {exercise?.name || 'Exercício indisponível'}
                     </h4>
                     <p>
-                      {exercise?.equipment} · {(exercise?.muscle_groups || []).join(' / ')}
+                      {exercise?.equipment} ·{' '}
+                      {(exercise?.primary_muscle_groups || exercise?.muscle_groups || []).join(
+                        ' / ',
+                      )}
                     </p>
                     {exercise?.external_id && (
                       <ExercisePreview
@@ -306,10 +313,15 @@ export function TemplateEditor({
                     {exercise.equipment} · {loadLabel(exercise.load_convention)}
                   </small>
                   <div className="muscle-tags">
-                    {(exercise.muscle_groups || []).map((name) => (
-                      <span key={name}>{name}</span>
-                    ))}
+                    {(exercise.primary_muscle_groups || exercise.muscle_groups || []).map(
+                      (name) => (
+                        <span key={name}>{name}</span>
+                      ),
+                    )}
                   </div>
+                  {!!exercise.secondary_muscle_groups?.length && (
+                    <small>Auxiliares: {exercise.secondary_muscle_groups.join(', ')}</small>
+                  )}
                 </div>
                 <div className="picker-item-actions">
                   {exercise.external_id && (exercise.video_url || exercise.image_url) && (

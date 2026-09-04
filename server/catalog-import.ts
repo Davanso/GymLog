@@ -15,8 +15,11 @@ const taxonomySlug = (value: string) =>
 export async function importExercise(item: ProviderExercise) {
   const sql = getDatabase();
   const equipmentName = item.equipments[0] || 'Sem equipamento';
-  const muscles = [...new Set([...item.targetMuscles, ...item.secondaryMuscles])];
-  const primary = item.targetMuscles[0] || muscles[0] || 'Corpo inteiro';
+  const primaryGroup = item.primaryMuscleGroup || item.targetMuscles[0] || 'Corpo inteiro';
+  const secondaryGroups = [
+    ...new Set([...item.targetMuscles.slice(1), ...item.secondaryMuscles]),
+  ].filter((name) => name !== primaryGroup);
+  const muscles = [primaryGroup, ...secondaryGroups];
   const bodyweight = /body|peso corporal/i.test(equipmentName);
   const exerciseSlug = `ascend-${slug(item.externalId)}`;
   const image = item.imageUrl || item.imageUrls['720p'] || item.imageUrls['480p'] || null;
@@ -26,7 +29,7 @@ export async function importExercise(item: ProviderExercise) {
   ].filter((value): value is { kind: string; url: string; position: number } => Boolean(value));
   await sql.transaction([
     sql`INSERT INTO equipment(slug,name) VALUES (${slug(equipmentName)},${equipmentName.slice(0, 120)}) ON CONFLICT(slug) DO NOTHING`,
-    ...[primary, ...muscles].map(
+    ...muscles.map(
       (name) =>
         sql`INSERT INTO muscle_groups(slug,name) VALUES (${taxonomySlug(name)},${name.slice(0, 120)}) ON CONFLICT(slug) DO NOTHING`,
     ),
@@ -40,10 +43,10 @@ export async function importExercise(item: ProviderExercise) {
     sql`DELETE FROM exercise_muscles WHERE exercise_id=(
       SELECT id FROM exercises WHERE provider='ascendapi' AND external_id=${item.externalId}
     )`,
-    ...[primary, ...muscles].map(
-      (name, index) =>
+    ...muscles.map(
+      (name) =>
         sql`INSERT INTO exercise_muscles(exercise_id,muscle_group_id,role)
-          SELECT e.id,m.id,${index === 0 ? 'primary' : 'secondary'} FROM exercises e,muscle_groups m
+          SELECT e.id,m.id,${name === primaryGroup ? 'primary' : 'secondary'} FROM exercises e,muscle_groups m
           WHERE e.provider='ascendapi' AND e.external_id=${item.externalId} AND m.slug=${taxonomySlug(name)}
           ON CONFLICT(exercise_id,muscle_group_id) DO NOTHING`,
     ),
@@ -59,9 +62,14 @@ export async function importExercise(item: ProviderExercise) {
   ]);
   const rows = await sql`
     SELECT e.id,e.name,q.name equipment,e.tracking_mode,e.load_mode,e.load_convention,e.external_id,
-      (SELECT url FROM exercise_media WHERE exercise_id=e.id ORDER BY position LIMIT 1) image_url,
+      (SELECT url FROM exercise_media WHERE exercise_id=e.id AND kind='image' ORDER BY position LIMIT 1) image_url,
+      (SELECT url FROM exercise_media WHERE exercise_id=e.id AND kind='video' ORDER BY position LIMIT 1) video_url,
       ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
-        WHERE em.exercise_id=e.id ORDER BY em.role,m.name) muscle_groups
+        WHERE em.exercise_id=e.id ORDER BY em.role,m.name) muscle_groups,
+      ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
+        WHERE em.exercise_id=e.id AND em.role='primary' ORDER BY m.name) primary_muscle_groups,
+      ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
+        WHERE em.exercise_id=e.id AND em.role='secondary' ORDER BY m.name) secondary_muscle_groups
     FROM exercises e JOIN equipment q ON q.id=e.equipment_id
     WHERE e.provider='ascendapi' AND e.external_id=${item.externalId}`;
   return rows[0];

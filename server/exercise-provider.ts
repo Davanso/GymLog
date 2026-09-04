@@ -1,5 +1,5 @@
 import { exerciseNames } from './exercise-name-translations.js';
-import { standardMuscleGroup } from './muscle-group-map.js';
+import { primaryMuscleGroup, standardMuscleGroup } from './muscle-group-map.js';
 import {
   translateExerciseName,
   translateInstruction,
@@ -126,12 +126,15 @@ export interface ProviderExercise {
   equipments: string[];
   targetMuscles: string[];
   secondaryMuscles: string[];
+  primaryMuscleGroup: string;
   exerciseType: string | null;
   instructions: string[];
   overview: string | null;
 }
 function exercise(value: unknown): ProviderExercise {
   const item = object(value);
+  const bodyParts = strings(item.bodyParts);
+  const targetMuscles = strings(item.targetMuscles);
   const imageUrls: Record<string, string> = {};
   if (item.imageUrls !== undefined) {
     for (const [resolution, value] of Object.entries(object(item.imageUrls))) {
@@ -146,10 +149,11 @@ function exercise(value: unknown): ProviderExercise {
     imageUrl: mediaUrl(item.imageUrl),
     imageUrls,
     videoUrl: mediaUrl(item.videoUrl),
-    bodyParts: strings(item.bodyParts).map(translateTaxonomy),
+    bodyParts: bodyParts.map(translateTaxonomy),
     equipments: strings(item.equipments).map(translateTaxonomy),
-    targetMuscles: strings(item.targetMuscles).map(standardMuscleGroup),
+    targetMuscles: targetMuscles.map(standardMuscleGroup),
     secondaryMuscles: strings(item.secondaryMuscles).map(standardMuscleGroup),
+    primaryMuscleGroup: primaryMuscleGroup(bodyParts, targetMuscles, text(item.exerciseId)),
     exerciseType:
       typeof item.exerciseType === 'string' ? translateTaxonomy(item.exerciseType) : null,
     instructions: strings(item.instructions).map(translateInstruction),
