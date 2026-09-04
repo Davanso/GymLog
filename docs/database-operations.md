@@ -44,6 +44,16 @@ Não há execução automática de migrations durante build ou deploy da Vercel.
 | `004_catalog_read_permissions.sql` | Leitura de snapshot sem exigir escrita no catálogo |
 | `005_catalog_and_template_rest.sql` | IDs externos, descanso por ficha e bloqueio de exercício repetido |
 
+## Seed curado em português
+
+`database/seeds/001_curated_exercises_pt_br.sql` contém os grupos, equipamentos, exercícios e relações enviados para o catálogo manual em português. Ele é idempotente e complementa o catálogo sincronizado da API sem removê-lo.
+
+```bash
+npm run db:seed:curated
+```
+
+O comando executa o arquivo inteiro dentro de uma transação administrativa. Qualquer falha provoca rollback; credenciais e detalhes da conexão não são impressos.
+
 ## O que é garantido no banco
 
 - Nome não vazio, posições positivas, carga decimal finita e não negativa.

@@ -28,6 +28,8 @@ O halter centralizado fica reservado ao carregamento inicial sem dados, aparecen
 
 A seleção mantém os exercícios curados e os 200 exercícios disponibilizados pelo plano gratuito da AscendAPI. `npm run catalog:sync` percorre as oito páginas de 25 itens, consulta os detalhes e atualiza o catálogo de forma idempotente. Os nomes possuem uma tabela explícita em português; equipamentos, músculos, tipos e instruções passam pela camada de localização antes de chegar à interface. A chave da RapidAPI permanece somente no servidor.
 
+Os músculos detalhados do fornecedor são consolidados em grupos curtos no arquivo `server/muscle-group-map.ts`. Esse é o ponto único para ajustes manuais: altere o valor de uma entrada e execute `npm run catalog:sync`. A lista atual é Abdômen, Adutores, Antebraços, Bíceps, Corpo inteiro, Costas, Glúteos, Ombros, Panturrilhas, Peito, Pescoço, Posteriores de coxa, Quadríceps e Tríceps.
+
 O botão **Ver execução** está disponível no editor e durante o treino. Ele abre um popup centralizado com legenda em português, vídeo, imagem de apoio e instruções. A sincronização encontrou imagem nos 200 exercícios e vídeo em 199; o único detalhe sem vídeo persistido recebeu HTTP 429 do CDN após três tentativas e continua com imagem. A interface usa primeiro a mídia persistida, por isso um limite momentâneo do fornecedor não impede a demonstração. Apenas URLs HTTPS do domínio permitido pelo adaptador são exibidas.
 
 No editor, **Ver execução** aparece diretamente em cada resultado sincronizado do catálogo e também no card depois que o exercício é adicionado. Os exercícios curados antigos sem mídia externa não exibem uma ação vazia.

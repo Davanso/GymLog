@@ -1,4 +1,5 @@
 import { exerciseNames } from './exercise-name-translations.js';
+import { standardMuscleGroup } from './muscle-group-map.js';
 import {
   translateExerciseName,
   translateInstruction,
@@ -147,8 +148,8 @@ function exercise(value: unknown): ProviderExercise {
     videoUrl: mediaUrl(item.videoUrl),
     bodyParts: strings(item.bodyParts).map(translateTaxonomy),
     equipments: strings(item.equipments).map(translateTaxonomy),
-    targetMuscles: strings(item.targetMuscles).map(translateTaxonomy),
-    secondaryMuscles: strings(item.secondaryMuscles).map(translateTaxonomy),
+    targetMuscles: strings(item.targetMuscles).map(standardMuscleGroup),
+    secondaryMuscles: strings(item.secondaryMuscles).map(standardMuscleGroup),
     exerciseType:
       typeof item.exerciseType === 'string' ? translateTaxonomy(item.exerciseType) : null,
     instructions: strings(item.instructions).map(translateInstruction),

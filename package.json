@@ -16,6 +16,7 @@
     "db:verify": "node --env-file=.env scripts/verify-database.mjs",
     "db:status": "node --env-file=.env scripts/database-status.mjs",
     "db:provision-runtime": "node --env-file=.env scripts/provision-runtime.mjs",
+    "db:seed:curated": "node --env-file=.env scripts/seed-curated-exercises.mjs",
     "lint": "eslint .",
     "prepare": "husky",
     "commit": "git commit",

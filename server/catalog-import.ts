@@ -9,6 +9,8 @@ const slug = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 100) || 'outro';
+const taxonomySlug = (value: string) =>
+  value === 'Posteriores de coxa' ? 'posteriores' : slug(value);
 
 export async function importExercise(item: ProviderExercise) {
   const sql = getDatabase();
@@ -26,7 +28,7 @@ export async function importExercise(item: ProviderExercise) {
     sql`INSERT INTO equipment(slug,name) VALUES (${slug(equipmentName)},${equipmentName.slice(0, 120)}) ON CONFLICT(slug) DO NOTHING`,
     ...[primary, ...muscles].map(
       (name) =>
-        sql`INSERT INTO muscle_groups(slug,name) VALUES (${slug(name)},${name.slice(0, 120)}) ON CONFLICT(slug) DO NOTHING`,
+        sql`INSERT INTO muscle_groups(slug,name) VALUES (${taxonomySlug(name)},${name.slice(0, 120)}) ON CONFLICT(slug) DO NOTHING`,
     ),
     sql`INSERT INTO exercises(slug,name,description,instructions,equipment_id,tracking_mode,load_mode,load_convention,provider,external_id)
       VALUES (${exerciseSlug},${item.name.slice(0, 120)},${item.overview?.slice(0, 2000) || null},${item.instructions},
@@ -35,11 +37,14 @@ export async function importExercise(item: ProviderExercise) {
       DO UPDATE SET name=excluded.name,description=coalesce(excluded.description,exercises.description),
         instructions=CASE WHEN cardinality(excluded.instructions)>0 THEN excluded.instructions ELSE exercises.instructions END,
         equipment_id=excluded.equipment_id`,
+    sql`DELETE FROM exercise_muscles WHERE exercise_id=(
+      SELECT id FROM exercises WHERE provider='ascendapi' AND external_id=${item.externalId}
+    )`,
     ...[primary, ...muscles].map(
       (name, index) =>
         sql`INSERT INTO exercise_muscles(exercise_id,muscle_group_id,role)
           SELECT e.id,m.id,${index === 0 ? 'primary' : 'secondary'} FROM exercises e,muscle_groups m
-          WHERE e.provider='ascendapi' AND e.external_id=${item.externalId} AND m.slug=${slug(name)}
+          WHERE e.provider='ascendapi' AND e.external_id=${item.externalId} AND m.slug=${taxonomySlug(name)}
           ON CONFLICT(exercise_id,muscle_group_id) DO NOTHING`,
     ),
     ...media.map(

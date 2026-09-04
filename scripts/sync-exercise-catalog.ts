@@ -54,3 +54,5 @@ for (let index = 0; index < summaries.length; index += 4) {
   );
   console.log(`Sincronizados ${completed}/${summaries.length}`);
 }
+await getDatabase()`DELETE FROM muscle_groups m
+  WHERE NOT EXISTS(SELECT 1 FROM exercise_muscles em WHERE em.muscle_group_id=m.id)`;
