@@ -103,3 +103,12 @@ Sem `NEON_AUTH_BASE_URL`, o sistema falha de forma fechada com 503. A implementa
 A Auth URL foi obtida da branch production do projeto gymlog e cadastrada no .env local e na Vercel Production. O domínio HTTPS do GymLog foi cadastrado como confiável. Allow Localhost, cadastro/login por email e o servidor de email compartilhado do Neon já estavam habilitados. A confirmação obrigatória no cadastro está desabilitada na configuração atual.
 
 A URL desta região usa o domínio neonauth.sa-east-1.aws.neon.tech, aceito pelo backend junto ao formato neon.build. Foram verificados contra o serviço real: sessão anônima (200/null), rejeição das APIs privadas sem login (401) e conexão ao banco (200). Cadastro, perfil autenticado e entrega dos emails ainda precisam de teste com uma conta do usuário.
+
+## Loading da interface
+
+O componente reutilizável LoadingState usa um halter SVG que salta e gira, com sombra sincronizada em CSS. É usado ao consultar a sessão, carregar o perfil e aguardar as ações dos formulários/logout. Todos os loadings aparecem centralizados na tela inteira, inclusive os acionados por botões ou componentes internos. LoadingState usa um portal no body e posição fixa, sem depender do layout do componente pai. O texto é anunciado com role=status; o desenho é decorativo. prefers-reduced-motion desativa as animações. Não há atraso artificial nas requisições.
+
+Login e envio de emails foram confirmados pelo usuário em 04/09/2026.
+
+As skills neon e neon-postgres estão instaladas em .agents/skills para o Codex. Instalação equivalente pelo repositório oficial: npx --yes skills add neondatabase/agent-skills --skill neon --skill neon-postgres --agent codex -y. As skills fornecem instruções; autenticação da CLI continua independente.
+
