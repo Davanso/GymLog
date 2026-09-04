@@ -153,8 +153,8 @@ export function createExerciseProvider(
   env: NodeJS.ProcessEnv = process.env,
 ) {
   return async ({ resource, params }: CatalogRequest) => {
-    const key = env.RAPIDAPI_KEY || env['x-rapidapi-key'];
-    const configuredHost = env.RAPIDAPI_HOST || env['x-rapidapi-host'] || HOST;
+    const key = env.RAPIDAPI_KEY;
+    const configuredHost = env.RAPIDAPI_HOST || HOST;
     if (!key || configuredHost !== HOST) throw new CatalogError(503, 'Catálogo não configurado.');
     const path =
       resource === 'exercise'

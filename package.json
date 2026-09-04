@@ -39,6 +39,7 @@
     "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.69.0",
+    "vercel": "^59.11.2",
     "vite": "^8.2.2"
   },
   "dependencies": {

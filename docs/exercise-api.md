@@ -11,7 +11,7 @@ RAPIDAPI_KEY=""
 RAPIDAPI_HOST="edb-with-videos-and-images-by-ascendapi.p.rapidapi.com"
 ```
 
-Os nomes existentes `x-rapidapi-key` e `x-rapidapi-host` também são aceitos para compatibilidade com a configuração atual. Prefira os nomes em maiúsculas para novas instalações. Se ambos existirem, `RAPIDAPI_*` tem precedência. O host é validado contra o único provedor permitido; não aceita destinos arbitrários.
+Use `RAPIDAPI_KEY` e `RAPIDAPI_HOST` no `.env` e na Vercel. Os nomes `x-rapidapi-key` e `x-rapidapi-host` são apenas headers HTTP enviados pelo servidor; hífens não são aceitos nos nomes das variáveis pela Vercel CLI. O host é validado contra o único provedor permitido; não aceita destinos arbitrários. Reinicie `npm run dev:full` após alterar o `.env`.
 
 Na Vercel, cadastrar as variáveis de servidor no ambiente apropriado antes do deploy. A configuração local não é enviada automaticamente. A chave não deve usar prefixo `VITE_` nem ser colocada em arquivos versionados.
 
@@ -81,11 +81,57 @@ npm run test:backend
 npm run build
 ```
 
-`npm run dev:full` exige Vercel CLI atual e projeto vinculado. Use a porta mostrada no terminal para chamar `/api/catalog?resource=bodyparts`. O comando Vite isolado não executa as funções.
+`npm run dev:full` usa a Vercel CLI instalada nas dependências do projeto e exige projeto vinculado. Rode `npm ci` ao clonar ou atualizar as dependências. Use a porta mostrada no terminal para chamar `/api/catalog?resource=bodyparts`. O comando Vite isolado não executa as funções.
+
+Se aparecer `NO_RESPONSE_FROM_FUNCTION` com `Cannot read properties of undefined (reading 'startsWith')`, confira a versão da CLI exibida no início do terminal. A CLI global 41.3.2 falhou antes de executar os handlers neste projeto; a versão local 59.11.2 foi validada com `/api/health` e `/api/catalog?resource=bodyparts`, ambos retornando 200. Encerre o processo antigo com Ctrl+C e reinicie por `npm run dev:full`, evitando chamar a instalação global com `vercel dev` diretamente.
 
 Os testes usam respostas simuladas para não gastar cota: validação de entrada, normalização, paginação, mídias, proteção da chave, falhas/timeout e comportamento HTTP. A conexão real foi conferida separadamente com a chave local.
 
-## Referências
+## Teste manual no Windows
+
+Inicie `npm run dev:full` e mantenha esse terminal aberto. Nos exemplos abaixo, substitua `3000` pela porta mostrada pela Vercel CLI. Em outro terminal PowerShell:
+
+```powershell
+# Conexão com o Neon
+curl.exe -i "http://localhost:3000/api/health"
+
+# Partes do corpo e imagens
+curl.exe -i "http://localhost:3000/api/catalog?resource=bodyparts"
+
+# Cinco exercícios, filtrados pelo nome
+curl.exe -i "http://localhost:3000/api/catalog?name=bench&limit=5"
+
+# Busca textual
+curl.exe -i "http://localhost:3000/api/catalog?resource=search&search=bench%20press"
+```
+
+Para obter um ID real e consultar imagens/vídeo do detalhe, sem copiar o ID manualmente:
+
+```powershell
+$baseUrl = 'http://localhost:3000'
+$lista = Invoke-RestMethod "$baseUrl/api/catalog?limit=1"
+$exerciseId = $lista.data[0].externalId
+Invoke-RestMethod "$baseUrl/api/catalog?resource=exercise&id=$exerciseId" |
+  ConvertTo-Json -Depth 10
+```
+
+Essas consultas retornam HTTP 200 quando a configuração e o fornecedor estão disponíveis. O resultado de `health` deve conter `database: connected`. Listas ficam em `data`; no detalhe, confira `imageUrl`, `videoUrl` e `instructions`, que podem estar ausentes/vazios conforme o exercício.
+
+Também confira erros controlados, que não chamam o fornecedor:
+
+```powershell
+# Esperado: HTTP 400, limite inválido
+curl.exe -i "http://localhost:3000/api/catalog?limit=100"
+
+# Esperado: HTTP 405, apenas GET permitido
+curl.exe -i -X POST "http://localhost:3000/api/catalog"
+```
+
+No Postman ou Insomnia, use as mesmas URLs com método GET, sem inserir a chave RapidAPI nos headers: ela já é lida pelo backend. Consultas reais de catálogo consomem a cota do fornecedor; `npm run test:backend` usa respostas simuladas e não consome essa cota. `/api/health` faz uma consulta ao Neon.
+
+Se receber HTML no lugar de JSON, confira se está usando a porta de `vercel dev`, e não o Vite isolado. HTTP 503 no catálogo indica configuração ausente/incorreta; 502 pode indicar falha ou rejeição da chave/assinatura pelo fornecedor; 429 indica limite atingido. Após alterar o `.env`, reinicie o servidor local.
+
+## Referências técnicas
 
 - [Quickstart do fornecedor](https://docs.ascendapi.com/quickstart/overview)
 - [OpenAPI ExerciseDB V2](https://docs.ascendapi.com/api-reference/exercisedb-v2/exercisedb-v2.json)
