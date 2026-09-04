@@ -27,7 +27,7 @@ O **GymLog** nasce para reunir essas informações em um diário de treino simpl
 
 A experiência planejada é direta: escolher os exercícios, montar o treino e registrar séries, repetições e cargas. Um catálogo com demonstrações em GIF vai servir de referência visual durante a consulta dos exercícios.
 
-> **Estado atual:** frontend e backend mínimo preparados, com conexão ao Neon. As 12 tabelas da aplicação, relações, índices, políticas de acesso e um catálogo inicial já foram aplicados. As telas de treino, os endpoints de negócio e a integração de autenticação ainda serão implementados.
+> **Estado atual:** frontend e backend mínimo preparados, com conexão ao Neon. As 12 tabelas da aplicação, relações, índices, políticas de acesso e um catálogo inicial já foram aplicados. Login, cadastro, recuperação de senha e perfil protegido estão implementados; a validação real depende da configuração do Neon Auth. Consulte o [guia de autenticação](docs/authentication.md). As telas de treino ainda serão implementadas.
 
 ## Funcionalidades
 
@@ -42,7 +42,7 @@ O que queremos construir:
 | 📈 Histórico | Consultar registros anteriores e acompanhar a evolução | Planejado |
 | 💾 Persistência | Salvar os dados para continuar de onde parou | Planejado |
 
-O banco escolhido é PostgreSQL 18 no Neon. A integração de catálogo com **AscendAPI / ExerciseDB V2** já consulta exercícios, imagens e vídeos pelo backend. A interface, o vínculo com os exercícios locais e a autenticação ainda serão implementados. As mídias retornadas pelo fornecedor não são necessariamente GIFs.
+O banco escolhido é PostgreSQL 18 no Neon. A integração de catálogo com **AscendAPI / ExerciseDB V2** já consulta exercícios, imagens e vídeos pelo backend. A interface do catálogo e o vínculo com os exercícios locais ainda serão implementados. O endpoint exige login. As mídias retornadas pelo fornecedor não são necessariamente GIFs.
 
 ## API de exercícios e imagens
 
@@ -97,7 +97,7 @@ npm install
 Inicie o servidor de desenvolvimento:
 
 ```bash
-npm run dev
+npm run dev:full
 ```
 
 ### Commit Pattern

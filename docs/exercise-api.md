@@ -71,7 +71,7 @@ Segundo a [política do fornecedor](https://docs.ascendapi.com/guides/caching), 
 
 As respostas de erro são genéricas e não incluem o corpo de erro do fornecedor, headers ou credenciais. Redirects do fornecedor são recusados, evitando enviar a chave para outro destino. Não existem retries automáticos que consumam a cota repetidamente.
 
-O endpoint de catálogo é leitura pública nesta etapa, sem integração de login. Antes da abertura ao público, integrar autenticação e controle de consumo por usuário; o limite retornado pelo fornecedor não equivale a uma proteção distribuída da aplicação. A rota não fornece acesso a dados privados do Neon.
+O endpoint exige sessão válida do Neon Auth. Configure conforme o [guia de autenticação](authentication.md). Sem sessão, retorna 401; configuração de autenticação ausente retorna 503. Controle de consumo por usuário ainda deve ser implementado; o limite retornado pelo fornecedor não equivale a uma proteção distribuída da aplicação. A rota não fornece acesso a dados privados do Neon.
 
 ## Desenvolvimento e testes
 
@@ -87,49 +87,13 @@ Se aparecer `NO_RESPONSE_FROM_FUNCTION` com `Cannot read properties of undefined
 
 Os testes usam respostas simuladas para não gastar cota: validação de entrada, normalização, paginação, mídias, proteção da chave, falhas/timeout e comportamento HTTP. A conexão real foi conferida separadamente com a chave local.
 
-## Teste manual no Windows
+## Teste manual
 
-Inicie `npm run dev:full` e mantenha esse terminal aberto. Nos exemplos abaixo, substitua `3000` pela porta mostrada pela Vercel CLI. Em outro terminal PowerShell:
+Inicie `npm run dev:full` com a porta correspondente a `APP_URL`. Configure o Neon Auth e entre no navegador. Na mesma origem, abra os endpoints da tabela acima: os cookies da sessão são enviados automaticamente. Sem login, o catálogo retorna 401.
 
-```powershell
-# Conexão com o Neon
-curl.exe -i "http://localhost:3000/api/health"
+No Postman ou Insomnia, autentique pela rota `POST /api/auth/sign-in/email`, com JSON contendo email/senha e header `Origin` igual a `APP_URL`; mantenha o cookie jar para as consultas seguintes. Nunca informe a chave RapidAPI no cliente.
 
-# Partes do corpo e imagens
-curl.exe -i "http://localhost:3000/api/catalog?resource=bodyparts"
-
-# Cinco exercícios, filtrados pelo nome
-curl.exe -i "http://localhost:3000/api/catalog?name=bench&limit=5"
-
-# Busca textual
-curl.exe -i "http://localhost:3000/api/catalog?resource=search&search=bench%20press"
-```
-
-Para obter um ID real e consultar imagens/vídeo do detalhe, sem copiar o ID manualmente:
-
-```powershell
-$baseUrl = 'http://localhost:3000'
-$lista = Invoke-RestMethod "$baseUrl/api/catalog?limit=1"
-$exerciseId = $lista.data[0].externalId
-Invoke-RestMethod "$baseUrl/api/catalog?resource=exercise&id=$exerciseId" |
-  ConvertTo-Json -Depth 10
-```
-
-Essas consultas retornam HTTP 200 quando a configuração e o fornecedor estão disponíveis. O resultado de `health` deve conter `database: connected`. Listas ficam em `data`; no detalhe, confira `imageUrl`, `videoUrl` e `instructions`, que podem estar ausentes/vazios conforme o exercício.
-
-Também confira erros controlados, que não chamam o fornecedor:
-
-```powershell
-# Esperado: HTTP 400, limite inválido
-curl.exe -i "http://localhost:3000/api/catalog?limit=100"
-
-# Esperado: HTTP 405, apenas GET permitido
-curl.exe -i -X POST "http://localhost:3000/api/catalog"
-```
-
-No Postman ou Insomnia, use as mesmas URLs com método GET, sem inserir a chave RapidAPI nos headers: ela já é lida pelo backend. Consultas reais de catálogo consomem a cota do fornecedor; `npm run test:backend` usa respostas simuladas e não consome essa cota. `/api/health` faz uma consulta ao Neon.
-
-Se receber HTML no lugar de JSON, confira se está usando a porta de `vercel dev`, e não o Vite isolado. HTTP 503 no catálogo indica configuração ausente/incorreta; 502 pode indicar falha ou rejeição da chave/assinatura pelo fornecedor; 429 indica limite atingido. Após alterar o `.env`, reinicie o servidor local.
+`/api/health` continua público e deve retornar `database: connected`. Com sessão válida, `/api/catalog?limit=100` retorna 400 e POST no catálogo retorna 405. Consultas reais consomem a cota do fornecedor; os testes automatizados não.
 
 ## Referências técnicas
 

@@ -15,6 +15,7 @@
     "db:migrate": "node --env-file=.env scripts/database.mjs",
     "db:verify": "node --env-file=.env scripts/verify-database.mjs",
     "db:status": "node --env-file=.env scripts/database-status.mjs",
+    "db:provision-runtime": "node --env-file=.env scripts/provision-runtime.mjs",
     "lint": "eslint .",
     "prepare": "husky",
     "commit": "git commit",
@@ -43,6 +44,7 @@
     "vite": "^8.2.2"
   },
   "dependencies": {
+    "@neondatabase/auth": "0.5.0-beta",
     "@neondatabase/serverless": "^1.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
