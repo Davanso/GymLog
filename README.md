@@ -27,7 +27,7 @@ O **GymLog** nasce para reunir essas informações em um diário de treino simpl
 
 A experiência planejada é direta: escolher os exercícios, montar o treino e registrar séries, repetições e cargas. Um catálogo com demonstrações em GIF vai servir de referência visual durante a consulta dos exercícios.
 
-> **Estado atual:** o projeto está na etapa de setup. React, TypeScript, Tailwind e a configuração de deploy estão preparados, com uma página inicial provisória. O backend mínimo usa Vercel Functions e o driver do Neon. As tabelas, funcionalidades de treino e autenticação ainda não foram implementadas.
+> **Estado atual:** frontend e backend mínimo preparados, com conexão ao Neon. As 12 tabelas da aplicação, relações, índices, políticas de acesso e um catálogo inicial já foram aplicados. As telas de treino, os endpoints de negócio e a integração de autenticação ainda serão implementados.
 
 ## Funcionalidades
 
@@ -45,6 +45,16 @@ O que queremos construir:
 O banco escolhido é PostgreSQL 18 no Neon. A fonte dos GIFs ainda será definida. Login e sincronização entre dispositivos também dependem dessa próxima etapa.
 
 ## Stack
+
+O [planejamento do banco de dados](docs/database-plan.md) detalha tabelas, relações e decisões de produto. A estrutura inicial já foi aplicada. O [guia de operação](docs/database-operations.md) documenta as migrations, o acesso ao banco e o que falta integrar na API.
+
+```bash
+npm run db:status   # Consultar migrations e contagens do catálogo
+npm run db:migrate  # Aplicar migrations pendentes, com transação e checksum
+npm run db:verify   # Validar regras e RLS com dados temporários e rollback
+```
+
+Os comandos usam o `.env` local. O banco tem 10 grupos musculares, 6 equipamentos e 12 exercícios iniciais. Os GIFs e as instruções detalhadas ainda dependem de curadoria. As migrations não são executadas automaticamente durante o deploy.
 
 | Tecnologia | Papel no projeto |
 | --- | --- |
