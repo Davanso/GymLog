@@ -4,6 +4,7 @@ import { RestTimer } from './RestTimer';
 import { readClock, startClock, type RestClock } from './rest-clock';
 import { loadLabel } from './labels';
 import { useConfirmation } from '../../components/useConfirmation';
+import { ExercisePreview } from './ExercisePreview';
 
 type SetInput = { setId: string; status: 'completed' | 'skipped'; amount?: number; load?: number };
 function SetRow({
@@ -36,7 +37,7 @@ function SetRow({
         <small>
           Meta: {set.target_reps_min ?? set.target_duration_seconds ?? '—'}{' '}
           {duration ? 's' : 'reps'} · {set.target_load_kg ?? 0}{' '}
-          {loadLabel(exercise.load_convention_snapshot)} · {set.rest_seconds ?? 0}s descanso
+          {loadLabel(exercise.load_convention_snapshot)}
         </small>
       </div>
       {pending ? (
@@ -176,6 +177,14 @@ export function SessionRunner({
           <h3>
             <span>{String(index + 1).padStart(2, '0')}</span> {exercise.exercise_name_snapshot}
           </h3>
+          {exercise.external_id && (
+            <ExercisePreview
+              externalId={exercise.external_id}
+              name={exercise.exercise_name_snapshot}
+              imageUrl={exercise.image_url}
+              videoUrl={exercise.video_url}
+            />
+          )}
           {exercise.sets.map((set) => (
             <SetRow
               key={set.id}
@@ -183,7 +192,17 @@ export function SessionRunner({
               exercise={exercise}
               editable={active}
               onSave={(input) => {
-                if (clock && input.status === 'completed') {
+                if (input.status === 'skipped') {
+                  requestConfirmation(
+                    {
+                      title: `Pular a série ${set.position}?`,
+                      description: 'Ela ficará registrada como não realizada neste treino.',
+                      confirmLabel: 'Pular série',
+                      cancelLabel: 'Continuar série',
+                    },
+                    () => void saveSet(input, set),
+                  );
+                } else if (clock) {
                   requestConfirmation(
                     {
                       title: 'Substituir o descanso atual?',
@@ -207,7 +226,16 @@ export function SessionRunner({
             className="primary-button"
             disabled={!finalizable}
             onClick={() =>
-              void onMutation({ action: 'finish', id: session.id, version: session.version })
+              requestConfirmation(
+                {
+                  title: 'Finalizar este treino?',
+                  description: `${completed} de ${sets.length} séries serão registradas como concluídas.`,
+                  confirmLabel: 'Finalizar treino',
+                  cancelLabel: 'Continuar treino',
+                },
+                () =>
+                  void onMutation({ action: 'finish', id: session.id, version: session.version }),
+              )
             }
           >
             Finalizar treino

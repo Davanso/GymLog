@@ -446,6 +446,75 @@
 .exercise-picker ul {
   max-height: 440px;
 }
+.external-catalog {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.external-catalog ul {
+  max-height: none;
+}
+.catalog-more {
+  width: 100%;
+  justify-content: center;
+  margin-top: 14px;
+}
+.preview-button {
+  display: block;
+  padding: 5px 0 0;
+  font-size: 12px;
+}
+.exercise-preview {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(680px, calc(100% - 32px));
+  max-height: calc(100svh - 32px);
+  padding: 28px;
+  border: 0;
+  border-radius: 18px;
+  color: var(--ink);
+  box-shadow: 0 30px 90px #08142655;
+}
+.exercise-preview figure {
+  margin: 20px 0 0;
+}
+.exercise-preview figure img,
+.exercise-preview figure video {
+  margin-top: 0;
+}
+.exercise-preview figcaption {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+.exercise-preview::backdrop {
+  background: #081426b8;
+  backdrop-filter: blur(5px);
+}
+.exercise-preview__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+}
+.exercise-preview__heading h2 {
+  font-size: 26px;
+}
+.exercise-preview img,
+.exercise-preview video {
+  width: 100%;
+  max-height: 55svh;
+  object-fit: contain;
+  margin-top: 20px;
+  border-radius: 12px;
+  background: #edf2f7;
+}
+.exercise-preview ol {
+  padding-left: 22px;
+  line-height: 1.65;
+}
 .exercise-picker li {
   padding: 16px 0;
 }
@@ -461,6 +530,15 @@
 }
 .exercise-picker .secondary-button:hover:not(:disabled) {
   background: #dbe7ff;
+}
+.picker-item-actions {
+  flex: none;
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+.picker-item-actions .preview-button {
+  white-space: nowrap;
 }
 .muscle-tags {
   display: flex;

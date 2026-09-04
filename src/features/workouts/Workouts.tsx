@@ -7,12 +7,25 @@ import { SessionRunner } from './SessionRunner';
 import './workouts.css';
 import { useConfirmation } from '../../components/useConfirmation';
 
-export function Workouts({ userId }: { userId: string }) {
+export function Workouts({
+  userId,
+  registerNavigationGuard,
+}: {
+  userId: string;
+  registerNavigationGuard: (guard: ((action: () => void) => void) | null) => void;
+}) {
   const { requestConfirmation, confirmation } = useConfirmation();
-  const [data, setData] = useState<WorkoutDashboard | null>(null);
+  const cacheKey = `gymlog:dashboard:v2:${userId}`;
+  const [data, setData] = useState<WorkoutDashboard | null>(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [editor, setEditor] = useState<TemplateDraft | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [busy, setBusy] = useState(!data);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const starting = useRef<{ id: string; templateId: string } | null>(null);
@@ -34,7 +47,15 @@ export function Workouts({ userId }: { userId: string }) {
         if (!controller.signal.aborted) setBusy(false);
       });
     return () => controller.abort();
-  }, [reload]);
+  }, [cacheKey, reload]);
+  useEffect(() => {
+    if (!data) return;
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+    } catch {
+      /* Cache is an optional performance enhancement. */
+    }
+  }, [cacheKey, data]);
   async function perform<T>(
     job: () => Promise<T>,
     label = 'Salvando alterações…',
@@ -141,6 +162,7 @@ export function Workouts({ userId }: { userId: string }) {
             exercises={data.exercises}
             onSave={save}
             onCancel={() => setEditor(null)}
+            registerNavigationGuard={registerNavigationGuard}
           />
         ) : session ? (
           <SessionRunner
@@ -165,7 +187,13 @@ export function Workouts({ userId }: { userId: string }) {
                   type="button"
                   className="primary-button"
                   onClick={() =>
-                    setEditor({ id: crypto.randomUUID(), name: '', notes: '', items: [] })
+                    setEditor({
+                      id: crypto.randomUUID(),
+                      name: '',
+                      notes: '',
+                      restSeconds: 60,
+                      items: [],
+                    })
                   }
                 >
                   ＋ Criar ficha
@@ -194,7 +222,13 @@ export function Workouts({ userId }: { userId: string }) {
                     type="button"
                     className="text-button"
                     onClick={() =>
-                      setEditor({ id: crypto.randomUUID(), name: '', notes: '', items: [] })
+                      setEditor({
+                        id: crypto.randomUUID(),
+                        name: '',
+                        notes: '',
+                        restSeconds: 60,
+                        items: [],
+                      })
                     }
                   >
                     Criar minha primeira ficha →

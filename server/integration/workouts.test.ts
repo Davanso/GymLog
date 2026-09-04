@@ -33,7 +33,8 @@ test('database: tenant isolation, plan CRUD, idempotent start, version conflicts
       id: randomUUID(),
       name: 'Verification plan',
       notes: '',
-      items: [{ exerciseId: exercise.id, sets: 2, reps: 10, seconds: null, load: 20, rest: 60 }],
+      restSeconds: 60,
+      items: [{ exerciseId: exercise.id, sets: 2, reps: 10, seconds: null, load: 20 }],
     };
     const created = await store.execute({ action: 'create', template: plan });
     assert.equal('version' in created && created.version, 1);

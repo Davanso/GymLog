@@ -1,29 +1,69 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Exercise, PlanItem, TemplateDraft } from '../../../shared/workouts';
 
 import { loadLabel } from './labels';
-import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { useConfirmation } from '../../components/useConfirmation';
 import { matchesExercise, templateChanged } from './exercise-search';
+import { ExercisePreview } from './ExercisePreview';
 
 export function TemplateEditor({
   initial,
   exercises,
   onSave,
   onCancel,
+  registerNavigationGuard,
 }: {
   initial: TemplateDraft;
   exercises: Exercise[];
   onSave: (draft: TemplateDraft) => void;
   onCancel: () => void;
+  registerNavigationGuard: (guard: ((action: () => void) => void) | null) => void;
 }) {
   const [plan, setPlan] = useState(initial);
   const [search, setSearch] = useState('');
   const [muscle, setMuscle] = useState('');
-  const [confirmExit, setConfirmExit] = useState(false);
+  const { requestConfirmation, confirmation } = useConfirmation();
+  const allowPageExit = useRef(false);
   const dirty = templateChanged(plan, initial);
+  useEffect(() => {
+    const leave = (action: () => void) => {
+      if (!dirty) return action();
+      requestConfirmation(
+        {
+          title: 'Sair da edição?',
+          description: 'As alterações não salvas serão descartadas.',
+          confirmLabel: 'Descartar e sair',
+          cancelLabel: 'Continuar editando',
+        },
+        () => {
+          allowPageExit.current = true;
+          action();
+        },
+      );
+    };
+    registerNavigationGuard(leave);
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty || allowPageExit.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {
+      registerNavigationGuard(null);
+      window.removeEventListener('beforeunload', beforeUnload);
+    };
+  }, [dirty, registerNavigationGuard, requestConfirmation]);
   function requestClose() {
-    if (dirty) setConfirmExit(true);
-    else onCancel();
+    if (!dirty) return onCancel();
+    requestConfirmation(
+      {
+        title: 'Sair da edição?',
+        description: 'As alterações não salvas serão descartadas.',
+        confirmLabel: 'Descartar e sair',
+        cancelLabel: 'Continuar editando',
+      },
+      onCancel,
+    );
   }
   function update(index: number, patch: Partial<PlanItem>) {
     setPlan((p) => ({
@@ -74,6 +114,17 @@ export function TemplateEditor({
           />
         </label>
         <label>
+          Descanso entre séries (segundos)
+          <input
+            type="number"
+            required
+            min={0}
+            max={3600}
+            value={plan.restSeconds}
+            onChange={(e) => setPlan({ ...plan, restSeconds: e.target.valueAsNumber })}
+          />
+        </label>
+        <label>
           <span>
             Observações <span className="muted">(opcional)</span>
           </span>
@@ -114,6 +165,14 @@ export function TemplateEditor({
                     <p>
                       {exercise?.equipment} · {(exercise?.muscle_groups || []).join(' / ')}
                     </p>
+                    {exercise?.external_id && (
+                      <ExercisePreview
+                        externalId={exercise.external_id}
+                        name={exercise.name}
+                        imageUrl={exercise.image_url}
+                        videoUrl={exercise.video_url}
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="plan-fields">
@@ -160,17 +219,6 @@ export function TemplateEditor({
                       onChange={(e) => update(index, { load: e.target.valueAsNumber })}
                     />
                   </label>
-                  <label>
-                    Descanso · seg
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      max={3600}
-                      value={Number.isNaN(item.rest) ? '' : item.rest}
-                      onChange={(e) => update(index, { rest: e.target.valueAsNumber })}
-                    />
-                  </label>
                 </div>
                 <div className="workout-actions planned-item__actions">
                   {plan.items.length > 1 && (
@@ -202,7 +250,20 @@ export function TemplateEditor({
                     type="button"
                     className="text-button danger"
                     onClick={() =>
-                      setPlan({ ...plan, items: plan.items.filter((_, i) => i !== index) })
+                      requestConfirmation(
+                        {
+                          title: `Remover “${exercise?.name || 'este exercício'}”?`,
+                          description:
+                            'As metas configuradas para este exercício serão descartadas.',
+                          confirmLabel: 'Remover exercício',
+                          cancelLabel: 'Manter exercício',
+                        },
+                        () =>
+                          setPlan((current) => ({
+                            ...current,
+                            items: current.items.filter((_, i) => i !== index),
+                          })),
+                      )
                     }
                   >
                     Remover
@@ -250,30 +311,42 @@ export function TemplateEditor({
                     ))}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={plan.items.length >= 20}
-                  aria-label={`Adicionar ${exercise.name}`}
-                  onClick={() =>
-                    setPlan({
-                      ...plan,
-                      items: [
-                        ...plan.items,
-                        {
-                          exerciseId: exercise.id,
-                          sets: 3,
-                          reps: exercise.tracking_mode === 'reps' ? 10 : null,
-                          seconds: exercise.tracking_mode === 'duration' ? 30 : null,
-                          load: 0,
-                          rest: 60,
-                        },
-                      ],
-                    })
-                  }
-                >
-                  ＋
-                </button>
+                <div className="picker-item-actions">
+                  {exercise.external_id && (exercise.video_url || exercise.image_url) && (
+                    <ExercisePreview
+                      externalId={exercise.external_id}
+                      name={exercise.name}
+                      imageUrl={exercise.image_url}
+                      videoUrl={exercise.video_url}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={
+                      plan.items.length >= 20 ||
+                      plan.items.some((item) => item.exerciseId === exercise.id)
+                    }
+                    aria-label={`Adicionar ${exercise.name}`}
+                    onClick={() =>
+                      setPlan({
+                        ...plan,
+                        items: [
+                          ...plan.items,
+                          {
+                            exerciseId: exercise.id,
+                            sets: 3,
+                            reps: exercise.tracking_mode === 'reps' ? 10 : null,
+                            seconds: exercise.tracking_mode === 'duration' ? 30 : null,
+                            load: 0,
+                          },
+                        ],
+                      })
+                    }
+                  >
+                    ＋
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -299,17 +372,7 @@ export function TemplateEditor({
           Cancelar
         </button>
       </div>
-      {confirmExit && (
-        <ConfirmDialog
-          title="Sair da edição?"
-          eyebrow="ANTES DE VOLTAR"
-          cancelLabel="Continuar editando"
-          description="As alterações não salvas serão descartadas."
-          confirmLabel="Descartar e sair"
-          onCancel={() => setConfirmExit(false)}
-          onConfirm={onCancel}
-        />
-      )}
+      {confirmation}
     </form>
   );
 }

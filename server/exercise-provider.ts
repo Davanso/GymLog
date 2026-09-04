@@ -1,3 +1,10 @@
+import { exerciseNames } from './exercise-name-translations.js';
+import {
+  translateExerciseName,
+  translateInstruction,
+  translateTaxonomy,
+} from './exercise-translations.js';
+
 const HOST = 'edb-with-videos-and-images-by-ascendapi.p.rapidapi.com';
 
 export class CatalogError extends Error {
@@ -134,16 +141,17 @@ function exercise(value: unknown): ProviderExercise {
   return {
     provider: 'ascendapi',
     externalId: text(item.exerciseId),
-    name: text(item.name),
+    name: exerciseNames[text(item.exerciseId)] || translateExerciseName(text(item.name)),
     imageUrl: mediaUrl(item.imageUrl),
     imageUrls,
     videoUrl: mediaUrl(item.videoUrl),
-    bodyParts: strings(item.bodyParts),
-    equipments: strings(item.equipments),
-    targetMuscles: strings(item.targetMuscles),
-    secondaryMuscles: strings(item.secondaryMuscles),
-    exerciseType: typeof item.exerciseType === 'string' ? item.exerciseType : null,
-    instructions: strings(item.instructions),
+    bodyParts: strings(item.bodyParts).map(translateTaxonomy),
+    equipments: strings(item.equipments).map(translateTaxonomy),
+    targetMuscles: strings(item.targetMuscles).map(translateTaxonomy),
+    secondaryMuscles: strings(item.secondaryMuscles).map(translateTaxonomy),
+    exerciseType:
+      typeof item.exerciseType === 'string' ? translateTaxonomy(item.exerciseType) : null,
+    instructions: strings(item.instructions).map(translateInstruction),
     overview: typeof item.overview === 'string' ? item.overview : null,
   };
 }

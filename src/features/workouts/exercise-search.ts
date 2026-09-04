@@ -19,6 +19,11 @@ export function matchesExercise(exercise: Exercise, query: string, muscle = '') 
 }
 export function templateChanged(plan: TemplateDraft, original: TemplateDraft) {
   const signature = (value: TemplateDraft) =>
-    JSON.stringify({ name: value.name.trim(), notes: value.notes.trim(), items: value.items });
+    JSON.stringify({
+      name: value.name.trim(),
+      notes: value.notes.trim(),
+      restSeconds: value.restSeconds,
+      items: value.items,
+    });
   return signature(plan) !== signature(original);
 }

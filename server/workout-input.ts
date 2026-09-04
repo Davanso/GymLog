@@ -40,24 +40,27 @@ export function draft(value: unknown): TemplateDraft {
   const input = object(value);
   if (!Array.isArray(input.items) || input.items.length < 1 || input.items.length > 20)
     throw new HttpError(400, 'Escolha de 1 a 20 exercícios.');
+  const items = input.items.map((raw) => {
+    const item = object(raw);
+    const reps = item.reps === null ? null : number(item.reps, 1, 1000);
+    const seconds = item.seconds === null ? null : number(item.seconds, 1, 86400);
+    if ((reps === null) === (seconds === null))
+      throw new HttpError(400, 'Informe repetições ou duração para cada exercício.');
+    return {
+      exerciseId: uuid(item.exerciseId),
+      sets: number(item.sets, 1, 10),
+      reps,
+      seconds,
+      load: loadKg(item.load),
+    };
+  });
+  if (new Set(items.map((item) => item.exerciseId)).size !== items.length)
+    throw new HttpError(400, 'Cada exercício pode aparecer apenas uma vez na ficha.');
   return {
     id: uuid(input.id),
     name: text(input.name, 120, true),
     notes: text(input.notes ?? '', 2000),
-    items: input.items.map((raw) => {
-      const item = object(raw);
-      const reps = item.reps === null ? null : number(item.reps, 1, 1000);
-      const seconds = item.seconds === null ? null : number(item.seconds, 1, 86400);
-      if ((reps === null) === (seconds === null))
-        throw new HttpError(400, 'Informe repetições ou duração para cada exercício.');
-      return {
-        exerciseId: uuid(item.exerciseId),
-        sets: number(item.sets, 1, 10),
-        reps,
-        seconds,
-        load: loadKg(item.load),
-        rest: number(item.rest, 0, 3600),
-      };
-    }),
+    restSeconds: number(input.restSeconds, 0, 3600),
+    items,
   };
 }

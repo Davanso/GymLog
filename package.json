@@ -20,7 +20,8 @@
     "prepare": "husky",
     "commit": "git commit",
     "commitlint": "commitlint",
-    "test:workouts:db": "node --env-file=.env --import tsx --test server/integration/workouts.test.ts"
+    "test:workouts:db": "node --env-file=.env --import tsx --test server/integration/workouts.test.ts",
+    "catalog:sync": "node --env-file=.env --import tsx scripts/sync-exercise-catalog.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",

@@ -138,7 +138,7 @@ Exemplo: “A — Peito e tríceps”. Nomes não precisam ser únicos. Arquivar
 
 `id`, `user_id`, `template_id`, `exercise_id`, `position`, `notes` opcional, `created_at`, `updated_at`.
 
-`UNIQUE(template_id, position)`. O exercício pode aparecer mais de uma vez na ficha. FK composta `(template_id, user_id)` garante que o item pertence ao mesmo usuário da ficha. Referência ao catálogo por `exercise_id`.
+`UNIQUE(template_id, position)` e `UNIQUE(template_id, exercise_id)`. Cada exercício aparece no máximo uma vez por ficha. FK composta `(template_id, user_id)` garante que o item pertence ao mesmo usuário da ficha. Referência ao catálogo por `exercise_id`.
 
 ### `template_sets`
 

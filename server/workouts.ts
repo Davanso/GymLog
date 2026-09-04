@@ -14,12 +14,12 @@ import { draft, loadKg, number, object, uuid } from './workout-input.js';
 export function workoutStore(db: PoolClient, userId: string) {
   async function templates(): Promise<Template[]> {
     const { rows } = await db.query(
-      `SELECT id,name,coalesce(notes,'') notes,version FROM workout_templates WHERE user_id=$1 AND archived_at IS NULL ORDER BY position,created_at LIMIT 100`,
+      `SELECT id,name,coalesce(notes,'') notes,version,rest_seconds AS "restSeconds" FROM workout_templates WHERE user_id=$1 AND archived_at IS NULL ORDER BY position,created_at LIMIT 100`,
       [userId],
     );
     const items = await db.query(
       `SELECT te.template_id, te.exercise_id, count(s.id)::int sets,
-      min(s.target_reps_min) reps,min(s.target_duration_seconds) seconds,min(s.target_load_kg)::float8 load,min(s.rest_seconds) rest
+      min(s.target_reps_min) reps,min(s.target_duration_seconds) seconds,min(s.target_load_kg)::float8 load
       FROM template_exercises te JOIN template_sets s ON s.template_exercise_id=te.id
       WHERE te.user_id=$1 AND te.template_id=ANY($2::uuid[]) GROUP BY te.id ORDER BY te.position`,
       [userId, rows.map((r) => r.id)],
@@ -34,37 +34,36 @@ export function workoutStore(db: PoolClient, userId: string) {
           reps: i.reps,
           seconds: i.seconds,
           load: i.load,
-          rest: i.rest,
         })),
     })) as Template[];
   }
   async function session(id: string): Promise<Session> {
     const { rows } = await db.query(
-      'SELECT id,name,version,status,started_at,ended_at FROM workout_sessions WHERE id=$1 AND user_id=$2',
+      `SELECT json_build_object('id',w.id,'name',w.name,'version',w.version,'status',w.status,
+        'started_at',w.started_at,'ended_at',w.ended_at,'exercises',coalesce((
+          SELECT json_agg(json_build_object('id',e.id,'exercise_name_snapshot',e.exercise_name_snapshot,
+            'tracking_mode_snapshot',e.tracking_mode_snapshot,'load_convention_snapshot',e.load_convention_snapshot,
+            'external_id',(SELECT external_id FROM exercises WHERE id=e.exercise_id),
+            'image_url',(SELECT url FROM exercise_media WHERE exercise_id=e.exercise_id AND kind='image' ORDER BY position LIMIT 1),
+            'video_url',(SELECT url FROM exercise_media WHERE exercise_id=e.exercise_id AND kind='video' ORDER BY position LIMIT 1),
+            'sets',coalesce((SELECT json_agg(json_build_object('id',s.id,'position',s.position,
+              'target_reps_min',s.target_reps_min,'target_duration_seconds',s.target_duration_seconds,
+              'target_load_kg',s.target_load_kg::float8,'rest_seconds',s.rest_seconds,
+              'actual_reps',s.actual_reps,'actual_duration_seconds',s.actual_duration_seconds,
+              'actual_load_kg',s.actual_load_kg::float8,'status',s.status) ORDER BY s.position)
+              FROM session_sets s WHERE s.session_exercise_id=e.id AND s.user_id=$2),'[]'::json)) ORDER BY e.position)
+          FROM session_exercises e WHERE e.session_id=w.id AND e.user_id=$2),'[]'::json)) result
+       FROM workout_sessions w WHERE w.id=$1 AND w.user_id=$2`,
       [id, userId],
     );
     if (!rows[0]) throw new HttpError(404, 'Treino não encontrado.');
-    const exercises = await db.query(
-      'SELECT id,exercise_name_snapshot,tracking_mode_snapshot,load_convention_snapshot FROM session_exercises WHERE session_id=$1 AND user_id=$2 ORDER BY position',
-      [id, userId],
-    );
-    const sets = await db.query(
-      `SELECT s.id,s.session_exercise_id,s.position,s.target_reps_min,s.target_duration_seconds,
-      s.target_load_kg::float8,s.rest_seconds,s.actual_reps,s.actual_duration_seconds,s.actual_load_kg::float8,s.status
-      FROM session_sets s JOIN session_exercises e ON e.id=s.session_exercise_id WHERE e.session_id=$1 AND s.user_id=$2 ORDER BY s.position`,
-      [id, userId],
-    );
-    return {
-      ...rows[0],
-      exercises: exercises.rows.map((e) => ({
-        ...e,
-        sets: sets.rows.filter((s) => s.session_exercise_id === e.id),
-      })),
-    } as Session;
+    return rows[0].result as Session;
   }
   async function dashboard(): Promise<WorkoutDashboard> {
     const exercises = await db.query(
-      `SELECT e.id,e.name,q.name equipment,e.tracking_mode,e.load_mode,e.load_convention,
+      `SELECT e.id,e.name,q.name equipment,e.tracking_mode,e.load_mode,e.load_convention,e.external_id,
+        (SELECT md.url FROM exercise_media md WHERE md.exercise_id=e.id AND md.kind='image' ORDER BY md.position LIMIT 1) image_url,
+        (SELECT md.url FROM exercise_media md WHERE md.exercise_id=e.id AND md.kind='video' ORDER BY md.position LIMIT 1) video_url,
         ARRAY(SELECT m.name::text FROM exercise_muscles em JOIN muscle_groups m ON m.id=em.muscle_group_id
           WHERE em.exercise_id=e.id ORDER BY em.role,m.name) AS muscle_groups
         FROM exercises e JOIN equipment q ON q.id=e.equipment_id WHERE e.archived_at IS NULL ORDER BY e.name`,
@@ -104,6 +103,7 @@ export function workoutStore(db: PoolClient, userId: string) {
           id: existing.id,
           name: existing.name,
           notes: existing.notes,
+          restSeconds: existing.restSeconds,
           items: existing.items,
         };
         if (JSON.stringify(saved) !== JSON.stringify(plan))
@@ -127,16 +127,14 @@ export function workoutStore(db: PoolClient, userId: string) {
         throw new HttpError(400, 'Exercício indisponível ou meta incompatível.');
     }
     if (version === undefined)
-      await db.query('INSERT INTO workout_templates(id,user_id,name,notes) VALUES ($1,$2,$3,$4)', [
-        plan.id,
-        userId,
-        plan.name,
-        plan.notes,
-      ]);
+      await db.query(
+        'INSERT INTO workout_templates(id,user_id,name,notes,rest_seconds) VALUES ($1,$2,$3,$4,$5)',
+        [plan.id, userId, plan.name, plan.notes, plan.restSeconds],
+      );
     else {
       await db.query(
-        'UPDATE workout_templates SET name=$3,notes=$4,version=version+1 WHERE id=$1 AND user_id=$2',
-        [plan.id, userId, plan.name, plan.notes],
+        'UPDATE workout_templates SET name=$3,notes=$4,rest_seconds=$5,version=version+1 WHERE id=$1 AND user_id=$2',
+        [plan.id, userId, plan.name, plan.notes, plan.restSeconds],
       );
       await db.query('DELETE FROM template_exercises WHERE template_id=$1 AND user_id=$2', [
         plan.id,
@@ -152,7 +150,7 @@ export function workoutStore(db: PoolClient, userId: string) {
       await db.query(
         `INSERT INTO template_sets(user_id,template_exercise_id,position,target_reps_min,target_reps_max,target_duration_seconds,target_load_kg,rest_seconds)
         SELECT $1,$2,n,$4,$4,$5,$6,$7 FROM generate_series(1,$3::int) n`,
-        [userId, id, item.sets, item.reps, item.seconds, item.load, item.rest],
+        [userId, id, item.sets, item.reps, item.seconds, item.load, plan.restSeconds],
       );
     }
     return { ...plan, version: version === undefined ? 1 : version + 1 };
@@ -182,7 +180,7 @@ export function workoutStore(db: PoolClient, userId: string) {
       );
     const template = await lockTemplate(templateId, version);
     const items = await db.query(
-      'SELECT * FROM template_exercises WHERE template_id=$1 AND user_id=$2 ORDER BY position',
+      `SELECT te.*,t.rest_seconds FROM template_exercises te JOIN workout_templates t ON t.id=te.template_id WHERE te.template_id=$1 AND te.user_id=$2 ORDER BY te.position`,
       [templateId, userId],
     );
     if (!items.rows.length)
@@ -191,19 +189,22 @@ export function workoutStore(db: PoolClient, userId: string) {
       'INSERT INTO workout_sessions(id,user_id,template_id,name,notes) VALUES ($1,$2,$3,$4,$5)',
       [id, userId, templateId, template.name, template.notes],
     );
-    for (const item of items.rows) {
-      const eid = randomUUID();
-      // The database trigger fills immutable measurement/name snapshots from the catalog.
-      await db.query(
-        'INSERT INTO session_exercises(id,user_id,session_id,exercise_id,position,notes) VALUES ($1,$2,$3,$4,$5,$6)',
-        [eid, userId, id, item.exercise_id, item.position, item.notes],
-      );
-      await db.query(
-        `INSERT INTO session_sets(user_id,session_exercise_id,position,set_type,target_reps_min,target_reps_max,target_duration_seconds,target_load_kg,rest_seconds)
-        SELECT user_id,$1,position,set_type,target_reps_min,target_reps_max,target_duration_seconds,target_load_kg,rest_seconds FROM template_sets WHERE template_exercise_id=$2 AND user_id=$3`,
-        [eid, item.id, userId],
-      );
-    }
+    await db.query(
+      `INSERT INTO session_exercises(id,user_id,session_id,exercise_id,position,notes)
+       SELECT uuidv7(),user_id,$1,exercise_id,position,notes FROM template_exercises
+       WHERE template_id=$2 AND user_id=$3 ORDER BY position`,
+      [id, templateId, userId],
+    );
+    await db.query(
+      `INSERT INTO session_sets(user_id,session_exercise_id,position,set_type,target_reps_min,target_reps_max,target_duration_seconds,target_load_kg,rest_seconds)
+       SELECT ts.user_id,se.id,ts.position,ts.set_type,ts.target_reps_min,ts.target_reps_max,
+         ts.target_duration_seconds,ts.target_load_kg,t.rest_seconds
+       FROM template_exercises te JOIN template_sets ts ON ts.template_exercise_id=te.id
+       JOIN session_exercises se ON se.session_id=$1 AND se.position=te.position
+       JOIN workout_templates t ON t.id=te.template_id
+       WHERE te.template_id=$2 AND te.user_id=$3`,
+      [id, templateId, userId],
+    );
     return session(id);
   }
   async function changeSession(input: Record<string, unknown>) {

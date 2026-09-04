@@ -12,8 +12,8 @@ import {
 } from '../../src/features/workouts/rest-clock.js';
 
 test('workout input rejects invalid modes, large plans, non-finite metrics and invalid ids', () => {
-  const item = { exerciseId: randomUUID(), sets: 3, reps: 10, seconds: null, load: 0, rest: 60 };
-  const valid = { id: randomUUID(), name: ' A ', notes: '', items: [item] };
+  const item = { exerciseId: randomUUID(), sets: 3, reps: 10, seconds: null, load: 0 };
+  const valid = { id: randomUUID(), name: ' A ', notes: '', restSeconds: 60, items: [item] };
   assert.equal(draft(valid).name, 'A');
   assert.equal(draft(valid).items[0].load, 0);
   for (const patch of [
@@ -23,8 +23,6 @@ test('workout input rejects invalid modes, large plans, non-finite metrics and i
     { load: NaN },
     { load: -1 },
     { load: 0.0001 },
-    { rest: -1 },
-    { rest: 3601 },
     { seconds: 10 },
     { reps: null },
     { exerciseId: 'bad' },
@@ -33,6 +31,9 @@ test('workout input rejects invalid modes, large plans, non-finite metrics and i
   assert.throws(() => draft({ ...valid, items: Array(21).fill(item) }));
   assert.throws(() => draft({ ...valid, items: [] }));
   assert.throws(() => draft({ ...valid, name: ' ' }));
+  assert.throws(() => draft({ ...valid, restSeconds: -1 }));
+  assert.throws(() => draft({ ...valid, restSeconds: 3601 }));
+  assert.throws(() => draft({ ...valid, items: [item, item] }));
 });
 test('rest clock uses elapsed time, pauses without drift and extends paused or completed rest', () => {
   const clock = { setId: 'set', remaining: 60000, deadline: 61000 };
@@ -63,19 +64,17 @@ test('exercise search combines muscle groups, equipment and name without accents
 });
 
 test('unchanged editor ignores server metadata and trimming, but detects order and values', () => {
-  const first = { exerciseId: randomUUID(), sets: 3, reps: 10, seconds: null, load: 0, rest: 60 };
+  const first = { exerciseId: randomUUID(), sets: 3, reps: 10, seconds: null, load: 0 };
   const second = { ...first, exerciseId: randomUUID() };
   const initial = {
     id: randomUUID(),
     name: 'Treino A',
     notes: '',
+    restSeconds: 60,
     items: [first, second],
     version: 1,
   };
   assert.equal(templateChanged({ ...initial, name: ' Treino A ' }, initial), false);
   assert.equal(templateChanged({ ...initial, items: [second, first] }, initial), true);
-  assert.equal(
-    templateChanged({ ...initial, items: [{ ...first, rest: 90 }, second] }, initial),
-    true,
-  );
+  assert.equal(templateChanged({ ...initial, restSeconds: 90 }, initial), true);
 });

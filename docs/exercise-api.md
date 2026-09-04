@@ -31,6 +31,7 @@ Todos os recursos usam `GET /api/catalog`. O parâmetro `resource` é opcional e
 | Página anterior | `/api/catalog?limit=10&before=EXERCISE_ID` |
 | Busca textual | `/api/catalog?resource=search&search=bench%20press` |
 | Detalhe com imagens, vídeo e instruções | `/api/catalog?resource=exercise&id=EXERCISE_ID` |
+| Importar um exercício selecionado | `POST /api/catalog` com `{ "externalId": "EXERCISE_ID" }` |
 
 Substitua `EXERCISE_ID` pelo `externalId` recebido, no formato `exr_...`. Na listagem são aceitos `name`, `keywords`, `targetMuscles`, `secondaryMuscles`, `exerciseType`, `bodyParts`, `equipments`, `limit`, `after` e `before`. Use de 1 a 25 resultados por página, default 10. Não combine os dois cursores. Use `URLSearchParams` para codificar filtros.
 
@@ -49,7 +50,15 @@ O detalhe retorna `{ data: {...} }`. O exercício normalizado contém:
 
 Na listagem alguns campos de detalhe podem estar vazios. A interface deve consultar o detalhe ao abrir um exercício. Mídias ausentes retornam `null`; listas ausentes retornam `[]`. Somente URLs HTTPS do CDN `exercisedb.dev` são expostas como mídia.
 
-O `externalId` não é o UUID da tabela local `exercises`. Nesta etapa não há importação, associação automática aos 12 exercícios locais ou gravação no Neon. Não enviar esse identificador externo para FKs das fichas. Essa associação deverá ser modelada quando forem definidos os direitos de persistência e o fluxo de seleção.
+O plano atual informa `Exercise Library Size = 200`. O comando abaixo sincroniza todos os itens e seus detalhes:
+
+```bash
+npm run catalog:sync
+```
+
+O sincronizador trabalha em lotes de quatro, reaproveita itens com vídeo e tenta cada detalhe até três vezes. Se o fornecedor limitar um detalhe, salva o resumo e a imagem; uma execução futura tenta completar o vídeo. A tabela versionada `exercise-name-translations.ts` garante nomes estáveis em português, enquanto a camada `exercise-translations.ts` localiza taxonomias e textos de instrução.
+
+O `externalId` não é enviado diretamente para as FKs das fichas. `POST /api/catalog` recebe somente esse identificador, consulta o detalhe diretamente no fornecedor e importa de forma idempotente nome, equipamento, músculos e mídia permitida. A resposta contém o UUID local que pode ser usado em `exerciseId`. A gravação usa a conexão administrativa exclusivamente no módulo server-only de importação; as operações do usuário continuam sob `gymlog_app` e RLS.
 
 ## Imagens e vídeos
 

@@ -49,7 +49,7 @@ test('forwards credentials only to fixed host and normalizes list and pagination
   assert.ok('meta' in result && result.meta);
   assert.equal(result.meta.nextCursor, 'exr_next');
   assert.ok(Array.isArray(result.data));
-  assert.equal(result.data[0].name, 'Bench Press');
+  assert.equal(result.data[0].name, 'Supino');
   assert.equal(JSON.stringify(result).includes('test-secret'), false);
 });
 

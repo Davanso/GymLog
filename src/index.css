@@ -230,17 +230,65 @@ button:disabled {
   margin-top: 8px;
 }
 .account-shell {
-  max-width: 1080px;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1080px);
+  gap: 48px;
+  max-width: 1400px;
   margin: auto;
-  padding: 32px;
+  padding: 24px 32px 24px 24px;
 }
-.account-shell header {
+.app-sidebar {
+  position: sticky;
+  top: 24px;
+  height: calc(100svh - 48px);
+  padding: 28px 18px 18px;
+  border-radius: 18px;
+  background: var(--ink);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  box-shadow: 0 18px 50px #14243a22;
+}
+.app-sidebar .brand {
+  color: white;
+  padding: 0 10px;
+}
+.app-sidebar .brand span {
+  color: #85aaff;
+}
+.app-sidebar nav {
+  margin-top: 48px;
+}
+.sidebar-tab {
+  display: flex;
   align-items: center;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--line);
-  gap: 16px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #c8d4e4;
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 14px;
+}
+.sidebar-tab--active {
+  color: white;
+  background: #ffffff14;
+  box-shadow: inset 3px 0 #85aaff;
+}
+.sidebar-tab span {
+  color: #85aaff;
+  font-size: 19px;
+}
+.app-sidebar > .secondary-button {
+  margin-top: auto;
+  background: transparent;
+  color: #d9e2ef;
+  border-color: #ffffff24;
+}
+.account-content {
+  min-width: 0;
+  padding: 48px 0 64px;
 }
 .secondary-button {
   border: 1px solid var(--line);
@@ -249,9 +297,6 @@ button:disabled {
   padding: 10px 16px;
   color: var(--ink);
   font-size: 14px;
-}
-.account-content {
-  padding-top: 64px;
 }
 .account-content h1 {
   font-size: 36px;
@@ -319,7 +364,35 @@ button:disabled {
     max-width: 460px;
   }
   .account-shell {
-    padding: 24px;
+    display: block;
+    padding: 16px;
+  }
+  .app-sidebar {
+    position: static;
+    height: auto;
+    padding: 16px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .app-sidebar nav {
+    margin: 0;
+    margin-left: auto;
+  }
+  .app-sidebar > .secondary-button {
+    margin: 0;
+    font-size: 0;
+    padding: 10px;
+  }
+  .app-sidebar > .secondary-button::after {
+    content: 'Sair';
+    font-size: 13px;
+  }
+  .sidebar-tab {
+    min-height: 42px;
+  }
+  .account-content {
+    padding: 34px 4px 48px;
   }
   .account-content {
     padding-top: 40px;

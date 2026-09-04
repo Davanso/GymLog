@@ -6,6 +6,9 @@ export type Exercise = {
   tracking_mode: 'reps' | 'duration';
   load_mode: 'external' | 'bodyweight' | 'assisted';
   load_convention: string;
+  external_id?: string | null;
+  image_url?: string | null;
+  video_url?: string | null;
 };
 export type PlanItem = {
   exerciseId: string;
@@ -13,9 +16,14 @@ export type PlanItem = {
   reps: number | null;
   seconds: number | null;
   load: number;
-  rest: number;
 };
-export type TemplateDraft = { id: string; name: string; notes: string; items: PlanItem[] };
+export type TemplateDraft = {
+  id: string;
+  name: string;
+  notes: string;
+  restSeconds: number;
+  items: PlanItem[];
+};
 export type Template = TemplateDraft & { version: number };
 export type SessionSet = {
   id: string;
@@ -34,6 +42,9 @@ export type SessionExercise = {
   exercise_name_snapshot: string;
   tracking_mode_snapshot: 'reps' | 'duration';
   load_convention_snapshot: string;
+  external_id?: string | null;
+  image_url?: string | null;
+  video_url?: string | null;
   sets: SessionSet[];
 };
 export type Session = {

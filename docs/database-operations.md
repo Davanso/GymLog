@@ -42,6 +42,7 @@ Não há execução automática de migrations durante build ou deploy da Vercel.
 | `002_rules_and_access.sql` | Papel restrito, RLS, snapshots e regras entre tabelas |
 | `003_catalog_seed.sql` | Taxonomias, exercícios e músculos relacionados |
 | `004_catalog_read_permissions.sql` | Leitura de snapshot sem exigir escrita no catálogo |
+| `005_catalog_and_template_rest.sql` | IDs externos, descanso por ficha e bloqueio de exercício repetido |
 
 ## O que é garantido no banco
 

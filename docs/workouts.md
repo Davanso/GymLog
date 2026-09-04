@@ -26,7 +26,11 @@ O halter centralizado fica reservado ao carregamento inicial sem dados, aparecen
 
 ## Catálogo
 
-A seleção usa os 12 exercícios curados já presentes no banco, com busca por nome, equipamento e músculos principais/secundários, ignorando acentos e combinando palavras. Também há filtro por grupo muscular e convenções explícitas: total, por mão, máquina, adicional ou assistência. Não há importação nem associação automática de IDs da AscendAPI. `/api/catalog` continua disponível para consulta externa autenticada, mas seus IDs não são UUIDs locais. A integração de seleção e mídias externas depende da definição de direitos de persistência do fornecedor, conforme [exercise-api.md](exercise-api.md).
+A seleção mantém os exercícios curados e os 200 exercícios disponibilizados pelo plano gratuito da AscendAPI. `npm run catalog:sync` percorre as oito páginas de 25 itens, consulta os detalhes e atualiza o catálogo de forma idempotente. Os nomes possuem uma tabela explícita em português; equipamentos, músculos, tipos e instruções passam pela camada de localização antes de chegar à interface. A chave da RapidAPI permanece somente no servidor.
+
+O botão **Ver execução** está disponível no editor e durante o treino. Ele abre um popup centralizado com legenda em português, vídeo, imagem de apoio e instruções. A sincronização encontrou imagem nos 200 exercícios e vídeo em 199; o único detalhe sem vídeo persistido recebeu HTTP 429 do CDN após três tentativas e continua com imagem. A interface usa primeiro a mídia persistida, por isso um limite momentâneo do fornecedor não impede a demonstração. Apenas URLs HTTPS do domínio permitido pelo adaptador são exibidas.
+
+No editor, **Ver execução** aparece diretamente em cada resultado sincronizado do catálogo e também no card depois que o exercício é adicionado. Os exercícios curados antigos sem mídia externa não exibem uma ação vazia.
 
 ## API
 
@@ -43,7 +47,7 @@ Todas as rotas abaixo exigem sessão verificada. O proprietário vem exclusivame
 | POST | `{ action: "set", id, version, setId, status, amount, load }` | Salva série e retorna sessão atualizada |
 | POST | `{ action: "finish" ou "cancel", id, version }` | Encerra a sessão |
 
-`template` tem `id` UUID gerado pelo cliente, `name`, `notes` e `items`. Cada item contém `exerciseId`, `sets`, `reps`, `seconds`, `load`, `rest`. Apenas `reps` ou `seconds` fica preenchido; o outro deve ser `null`. `version` de início é a versão da ficha; as operações de série/finalização usam a versão da sessão.
+`template` tem `id` UUID gerado pelo cliente, `name`, `notes`, `restSeconds` e `items`. O descanso é único por ficha. Cada item contém `exerciseId`, `sets`, `reps`, `seconds` e `load`; o mesmo `exerciseId` não pode aparecer duas vezes. Apenas `reps` ou `seconds` fica preenchido; o outro deve ser `null`. `version` de início é a versão da ficha; as operações de série/finalização usam a versão da sessão.
 
 No registro da série, `status` aceita `completed` ou `skipped`. `amount` corresponde a repetições ou segundos conforme o snapshot. `load` é a carga real em kg. Para uma série pulada, os valores reais são descartados.
 
@@ -76,5 +80,13 @@ O editor mostra o título dentro do card, número separado, campos de metas e ba
 Sair sem mudanças retorna imediatamente. Se houver alterações, um diálogo próprio oferece continuar editando ou descartar, com foco contido, Escape e retorno de foco. Salvar sem mudanças não envia requisição.
 
 Respostas de criação/edição atualizam as fichas em memória; início/finalização atualizam sessão ativa e recentes; exclusão remove a ficha da lista somente após confirmação da API. Não há GET de dashboard adicional após essas operações nem ao voltar da sessão. Registros já abertos ficam em cache durante a montagem da tela. O cache não guarda dados no disco nem ignora conflitos: versões antigas continuam retornando 409, com opção explícita de recarregar.
+
+O perfil e o dashboard usam `sessionStorage` para exibir imediatamente a última versão conhecida e fazem revalidação em segundo plano. O cache é isolado pelo usuário e é descartado ao fechar a sessão do navegador. O backend reutiliza um pool pequeno por instância serverless; cada requisição ainda abre sua própria transação, papel restrito e contexto RLS. A criação de uma sessão copia exercícios e séries em lote, e a leitura de uma sessão reúne seu conteúdo em uma consulta.
+
+Todas as decisões destrutivas ou de encerramento usam o `ConfirmDialog` acessível do app: sair da edição, remover exercício, excluir ficha, pular série, substituir descanso, finalizar ou cancelar treino. Escape, clique no fundo e o botão seguro fecham o popup sem executar a ação.
+
+O layout autenticado possui uma navegação lateral persistente. **Minhas fichas** é a primeira tab e o mesmo contêiner receberá as próximas áreas do GymLog; em telas pequenas, a navegação vira uma barra compacta no topo.
+
+Enquanto houver alterações não salvas, logo, tab **Minhas fichas**, botão de retorno e saída da conta passam pela mesma confirmação de descarte. Ao confirmar uma dessas navegações, o app marca a saída como autorizada para que `beforeunload` não abra um segundo aviso. Recarregar, fechar a aba e voltar pelo navegador usam `beforeunload`; nesses casos o navegador exige seu próprio diálogo e não permite que a página substitua a interface nativa.
 
 Verificação de interface com respostas simuladas: busca por gluteos encontra Glúteos; abrir edição e sair sem mudanças mantém o contador de rede em 1 (GET inicial); editar e salvar leva a 2 (apenas o POST, sem GET posterior). Diálogo, Escape e layouts de desktop/celular conferidos.
