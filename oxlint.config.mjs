@@ -1,0 +1,67 @@
+import { defineConfig } from 'oxlint';
+
+export default defineConfig({
+  plugins: ['eslint', 'typescript', 'promise', 'import'],
+  categories: {
+    correctness: 'error',
+  },
+  options: {
+    denyWarnings: false,
+    respectEslintDisableDirectives: false,
+    reportUnusedDisableDirectives: 'error',
+  },
+  ignorePatterns: [
+    'coverage',
+    'dist',
+    'distServer',
+    'node_modules',
+    'playwright-report',
+    'static',
+    'test-results',
+    'terraform',
+    '*.html',
+    '*.md',
+    '*.yml',
+  ],
+  rules: {
+    'no-undef': 'error',
+    'no-unused-vars': [
+      'error',
+      {
+        vars: 'all',
+        varsIgnorePattern: '^_',
+        args: 'after-used',
+        argsIgnorePattern: '^_',
+        caughtErrors: 'none',
+        fix: {
+          imports: 'safe-fix',
+          variables: 'off',
+        },
+      },
+    ],
+    'no-var': 'error',
+    'prefer-const': ['error', { destructuring: 'all', ignoreReadBeforeAssign: false }],
+    '@typescript-eslint/consistent-type-imports': [
+      'warn',
+      { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
+    ],
+    '@typescript-eslint/no-array-constructor': 'error',
+    '@typescript-eslint/no-empty-object-type': 'error',
+    '@typescript-eslint/no-non-null-asserted-optional-chain': 'error',
+    '@typescript-eslint/no-namespace': 'error',
+    '@typescript-eslint/no-require-imports': 'error',
+    '@typescript-eslint/no-unnecessary-type-constraint': 'error',
+    '@typescript-eslint/no-unsafe-function-type': 'error',
+    'eslint/no-unused-expressions': 'off',
+    'promise/no-multiple-resolved': 'error',
+    'promise/no-return-wrap': 'error',
+    'promise/param-names': 'error',
+    'promise/prefer-catch': 'error',
+    'import/export': 'error',
+    'import/first': 'error',
+    'import/no-absolute-path': 'error',
+    'import/no-duplicates': 'error',
+    'import/no-named-default': 'error',
+    'import/no-webpack-loader-syntax': 'error',
+  },
+});
