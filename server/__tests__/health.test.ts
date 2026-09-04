@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
-import handler from '../api/health.js'
+import handler from '../../api/health'
 
 test('health rejects writes and fails safely without configuration', async () => {
   const previous = process.env.DATABASE_URL
