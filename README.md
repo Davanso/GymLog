@@ -42,7 +42,17 @@ O que queremos construir:
 | 📈 Histórico | Consultar registros anteriores e acompanhar a evolução | Planejado |
 | 💾 Persistência | Salvar os dados para continuar de onde parou | Planejado |
 
-O banco escolhido é PostgreSQL 18 no Neon. A fonte dos GIFs ainda será definida. Login e sincronização entre dispositivos também dependem dessa próxima etapa.
+O banco escolhido é PostgreSQL 18 no Neon. A integração de catálogo com **AscendAPI / ExerciseDB V2** já consulta exercícios, imagens e vídeos pelo backend. A interface, o vínculo com os exercícios locais e a autenticação ainda serão implementados. As mídias retornadas pelo fornecedor não são necessariamente GIFs.
+
+## API de exercícios e imagens
+
+Configure a chave no `.env` do servidor e execute `npm run dev:full`. O endpoint `/api/catalog` permite consultar o fornecedor sem expor a chave ao navegador:
+
+- `/api/catalog?resource=bodyparts`: partes do corpo e suas imagens.
+- `/api/catalog?name=bench&limit=10`: exercícios com filtros e paginação.
+- `/api/catalog?resource=exercise&id=exr_...`: detalhe com imagens, vídeo e instruções.
+
+Consulte o [guia da integração](docs/exercise-api.md) para variáveis, filtros, respostas e testes. As consultas são em tempo real: o cache e a persistência dependem do plano do fornecedor, e suas URLs de mídia rotacionam semanalmente. Nenhum conteúdo externo foi importado no Neon nesta etapa.
 
 ## Stack
 
