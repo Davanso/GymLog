@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", sans-serif;
+  --font-display: "Arial Narrow", "Segoe UI", sans-serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+}
