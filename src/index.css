@@ -232,29 +232,47 @@ button:disabled {
 .account-shell {
   min-height: 100svh;
   display: grid;
-  grid-template-columns: 230px minmax(0, 1080px);
+  grid-template-columns: 230px minmax(0, 1fr);
   gap: 48px;
-  max-width: 1400px;
-  margin: auto;
-  padding: 24px 32px 24px 24px;
+  width: 100%;
+  padding: 0 32px 0 0;
+  transition: grid-template-columns 180ms ease;
 }
 .app-sidebar {
   position: sticky;
-  top: 24px;
-  height: calc(100svh - 48px);
+  top: 0;
+  height: 100svh;
   padding: 28px 18px 18px;
-  border-radius: 18px;
+  border-radius: 0 18px 18px 0;
   background: var(--ink);
   display: flex;
   flex-direction: column;
   box-shadow: 0 18px 50px #14243a22;
+  transition: padding 180ms ease;
 }
 .app-sidebar .brand {
   color: white;
   padding: 0 10px;
 }
-.app-sidebar .brand span {
+.app-sidebar .brand strong {
   color: #85aaff;
+}
+.sidebar-toggle {
+  position: absolute;
+  top: 76px;
+  right: -15px;
+  z-index: 1;
+  display: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #ffffff24;
+  border-radius: 50%;
+  background: var(--ink);
+  color: white;
+  box-shadow: 0 5px 16px #14243a38;
+  font-size: 22px;
+  line-height: 1;
 }
 .app-sidebar nav {
   margin-top: 48px;
@@ -276,7 +294,7 @@ button:disabled {
   background: #ffffff14;
   box-shadow: inset 3px 0 #85aaff;
 }
-.sidebar-tab span {
+.sidebar-icon {
   color: #85aaff;
   font-size: 19px;
 }
@@ -285,6 +303,10 @@ button:disabled {
   background: transparent;
   color: #d9e2ef;
   border-color: #ffffff24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
 }
 .account-content {
   min-width: 0;
@@ -338,6 +360,38 @@ button:disabled {
   min-height: 100svh;
   color: var(--blue);
 }
+.loading-page--global {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--paper);
+}
+.account-shell--loading {
+  visibility: hidden;
+}
+@media (min-width: 761px) {
+  .sidebar-toggle {
+    display: grid;
+  }
+  .account-shell--sidebar-collapsed {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 32px;
+  }
+  .app-sidebar[data-collapsed] {
+    padding-inline: 10px;
+  }
+  .app-sidebar[data-collapsed] .brand,
+  .app-sidebar[data-collapsed] .sidebar-label {
+    display: none;
+  }
+  .app-sidebar[data-collapsed] .sidebar-tab {
+    justify-content: center;
+    padding-inline: 8px;
+  }
+  .app-sidebar[data-collapsed] > .secondary-button {
+    padding-inline: 8px;
+  }
+}
 @media (max-width: 760px) {
   .auth-layout {
     grid-template-columns: 1fr;
@@ -374,6 +428,7 @@ button:disabled {
     flex-direction: row;
     align-items: center;
     gap: 12px;
+    border-radius: 16px;
   }
   .app-sidebar nav {
     margin: 0;
@@ -381,10 +436,12 @@ button:disabled {
   }
   .app-sidebar > .secondary-button {
     margin: 0;
-    font-size: 0;
     padding: 10px;
   }
-  .app-sidebar > .secondary-button::after {
+  .app-sidebar > .secondary-button .sidebar-label {
+    font-size: 0;
+  }
+  .app-sidebar > .secondary-button .sidebar-label::after {
     content: 'Sair';
     font-size: 13px;
   }

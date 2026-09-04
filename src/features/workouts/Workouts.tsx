@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Session, Template, TemplateDraft, WorkoutDashboard } from '../../../shared/workouts';
-import { LoadingState } from '../../components/LoadingState';
 import { workoutApi } from '../../lib/workout-api';
 import { TemplateEditor } from './TemplateEditor';
 import { SessionRunner } from './SessionRunner';
@@ -9,13 +8,15 @@ import { useConfirmation } from '../../components/useConfirmation';
 
 export function Workouts({
   userId,
+  onInitialLoadComplete,
   registerNavigationGuard,
 }: {
   userId: string;
+  onInitialLoadComplete: () => void;
   registerNavigationGuard: (guard: ((action: () => void) => void) | null) => void;
 }) {
   const { requestConfirmation, confirmation } = useConfirmation();
-  const cacheKey = `gymlog:dashboard:v3:${userId}`;
+  const cacheKey = `gymlog:dashboard:v4:${userId}`;
   const [data, setData] = useState<WorkoutDashboard | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
@@ -44,10 +45,13 @@ export function Workouts({
           setError(e instanceof Error ? e.message : 'Não foi possível carregar seus treinos.');
       })
       .finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
+        if (!controller.signal.aborted) {
+          setBusy(false);
+          onInitialLoadComplete();
+        }
       });
     return () => controller.abort();
-  }, [cacheKey, reload]);
+  }, [cacheKey, onInitialLoadComplete, reload]);
   useEffect(() => {
     if (!data) return;
     try {
@@ -132,7 +136,6 @@ export function Workouts({
   }
   return (
     <div className="workouts">
-      {busy && !data && <LoadingState label="Preparando seus treinos…" />}
       <div className="operation-status" role="status">
         {busy && data ? pendingLabel : ''}
       </div>

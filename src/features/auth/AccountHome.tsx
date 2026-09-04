@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { auth } from '../../lib/auth';
 import { LoadingState } from '../../components/LoadingState';
 import { Workouts } from '../workouts/Workouts';
 
 type Profile = { id: string; display_name: string; timezone: string };
+function storedSidebarPreference() {
+  try {
+    return localStorage.getItem('gymlog:sidebar-collapsed') === 'true';
+  } catch {
+    return false;
+  }
+}
 export function AccountHome() {
   const navigationGuard = useRef<((action: () => void) => void) | null>(null);
   const [profile, setProfile] = useState<Profile | null>(() => {
@@ -16,6 +23,8 @@ export function AccountHome() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [workoutsReady, setWorkoutsReady] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(storedSidebarPreference);
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
@@ -63,60 +72,97 @@ export function AccountHome() {
     event.preventDefault();
     navigationGuard.current(() => window.location.assign(destination));
   }
+  const handleWorkoutsReady = useCallback(() => setWorkoutsReady(true), []);
+  function toggleSidebar() {
+    setSidebarCollapsed((collapsed) => {
+      try {
+        localStorage.setItem('gymlog:sidebar-collapsed', String(!collapsed));
+      } catch {
+        /* The layout preference is optional. */
+      }
+      return !collapsed;
+    });
+  }
+  const appLoading = (!profile && !error) || (Boolean(profile) && !workoutsReady);
   return (
-    <main className="account-shell">
-      <aside className="app-sidebar">
-        <a className="brand" href="/app" onClick={(event) => navigate(event, '/app')}>
-          GYM<span>LOG</span>
-        </a>
-        <nav aria-label="Menu principal">
+    <>
+      {appLoading && (
+        <main className="loading-page loading-page--global">
+          <LoadingState label="Preparando seu GymLog…" delayMs={0} />
+        </main>
+      )}
+      <main
+        className={`account-shell${appLoading ? ' account-shell--loading' : ''}${sidebarCollapsed ? ' account-shell--sidebar-collapsed' : ''}`}
+      >
+        <aside className="app-sidebar" data-collapsed={sidebarCollapsed || undefined}>
+          <button
+            type="button"
+            className="sidebar-toggle"
+            aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            aria-expanded={!sidebarCollapsed}
+            onClick={toggleSidebar}
+          >
+            <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
+          </button>
           <a
-            className="sidebar-tab sidebar-tab--active"
+            className="brand"
             href="/app"
-            aria-current="page"
+            aria-label="GymLog"
+            title={sidebarCollapsed ? 'GymLog' : undefined}
             onClick={(event) => navigate(event, '/app')}
           >
-            <span aria-hidden="true">▤</span> Minhas fichas
+            <span className="brand-full">
+              GYM<strong>LOG</strong>
+            </span>
           </a>
-        </nav>
-        <button
-          className="secondary-button"
-          onClick={() =>
-            navigationGuard.current ? navigationGuard.current(() => void logout()) : void logout()
-          }
-          disabled={busy}
-        >
-          {busy ? (
-            <>
-              Saindo…
-              <LoadingState label="Saindo…" />
-            </>
-          ) : (
-            'Sair da conta'
+          <nav aria-label="Menu principal">
+            <a
+              className="sidebar-tab sidebar-tab--active"
+              href="/app"
+              aria-label="Minhas fichas"
+              aria-current="page"
+              onClick={(event) => navigate(event, '/app')}
+            >
+              <span className="sidebar-icon" aria-hidden="true">
+                ▤
+              </span>
+              <span className="sidebar-label">Minhas fichas</span>
+            </a>
+          </nav>
+          <button
+            className="secondary-button"
+            aria-label="Sair da conta"
+            onClick={() =>
+              navigationGuard.current ? navigationGuard.current(() => void logout()) : void logout()
+            }
+            disabled={busy}
+          >
+            <span className="sidebar-icon" aria-hidden="true">
+              ↪
+            </span>
+            <span className="sidebar-label">{busy ? 'Saindo…' : 'Sair da conta'}</span>
+            {busy && <LoadingState label="Saindo…" />}
+          </button>
+        </aside>
+        <section className="account-content">
+          <p className="eyebrow">SEU ESPAÇO</p>
+          {profile && <h1>Olá, {profile.display_name}.</h1>}
+          {error && (
+            <div className="message error" role="alert">
+              {error} <button onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
+            </div>
           )}
-        </button>
-      </aside>
-      <section className="account-content">
-        <p className="eyebrow">SEU ESPAÇO</p>
-        {profile ? (
-          <h1>Olá, {profile.display_name}.</h1>
-        ) : (
-          !error && <LoadingState label="Preparando seu espaço…" />
-        )}
-        {error && (
-          <div className="message error" role="alert">
-            {error} <button onClick={() => setRetry((n) => n + 1)}>Tentar novamente</button>
-          </div>
-        )}
-        {profile && (
-          <Workouts
-            userId={profile.id}
-            registerNavigationGuard={(guard) => {
-              navigationGuard.current = guard;
-            }}
-          />
-        )}
-      </section>
-    </main>
+          {profile && (
+            <Workouts
+              userId={profile.id}
+              onInitialLoadComplete={handleWorkoutsReady}
+              registerNavigationGuard={(guard) => {
+                navigationGuard.current = guard;
+              }}
+            />
+          )}
+        </section>
+      </main>
+    </>
   );
 }

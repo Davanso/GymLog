@@ -54,6 +54,16 @@ npm run db:seed:curated
 
 O comando executa o arquivo inteiro dentro de uma transação administrativa. Qualquer falha provoca rollback; credenciais e detalhes da conexão não são impressos.
 
+## Catálogo fixo do aplicativo
+
+`database/seeds/002_fixed_catalog_pt_br.sql` contém os 107 exercícios usados na
+versão principal do GymLog. O seed arquiva outras fontes sem apagar referências
+históricas e pode ser reaplicado sem duplicar registros:
+
+```bash
+npm run db:seed:fixed
+```
+
 ## O que é garantido no banco
 
 - Nome não vazio, posições positivas, carga decimal finita e não negativa.

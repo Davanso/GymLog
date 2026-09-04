@@ -2,14 +2,15 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import './LoadingState.css';
 
-type LoadingStateProps = { label?: string };
+type LoadingStateProps = { label?: string; delayMs?: number };
 
-export function LoadingState({ label = 'Abrindo seu GymLog…' }: LoadingStateProps) {
-  const [visible, setVisible] = useState(false);
+export function LoadingState({ label = 'Abrindo seu GymLog…', delayMs = 250 }: LoadingStateProps) {
+  const [visible, setVisible] = useState(delayMs === 0);
   useEffect(() => {
-    const timer = window.setTimeout(() => setVisible(true), 250);
+    if (delayMs === 0) return;
+    const timer = window.setTimeout(() => setVisible(true), delayMs);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [delayMs]);
   if (!visible) return null;
   return createPortal(
     <span className="gym-loading" role="status" aria-live="polite">
