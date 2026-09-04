@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json",
     "dev:full": "vercel dev",
-    "test:backend": "tsx --test server/health.test.ts",
+    "test:backend": "tsx --test server/__tests__/health.test.ts",
     "lint": "eslint .",
     "prepare": "husky",
     "commit": "git commit",
