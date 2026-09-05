@@ -129,14 +129,34 @@ test('database: tenant isolation, plan CRUD, idempotent start, version conflicts
         }),
       404,
     );
+    await denied(
+      () =>
+        other.execute({
+          action: 'skip-exercise',
+          id,
+          version: 2,
+          exerciseId: workout.exercises[0].id,
+        }),
+      404,
+    );
     await db.query("SELECT set_config('gymlog.user_id',$1,true)", [userA]);
     workout = (await store.execute({
-      action: 'set',
+      action: 'skip-exercise',
       id,
       version: 2,
-      setId: second.id,
-      status: 'skipped',
+      exerciseId: workout.exercises[0].id,
     })) as Session;
+    assert.equal(workout.exercises[0].sets[1].status, 'skipped');
+    await denied(
+      () =>
+        store.execute({
+          action: 'skip-exercise',
+          id,
+          version: workout.version,
+          exerciseId: workout.exercises[0].id,
+        }),
+      409,
+    );
     workout = (await store.execute({ action: 'finish', id, version: workout.version })) as Session;
     assert.equal(workout.status, 'completed');
     await denied(

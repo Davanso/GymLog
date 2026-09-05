@@ -10,9 +10,9 @@ da sessão em cascata e só aceita registros encerrados pertencentes ao usuário
 
 **Iniciar treino** cria uma sessão com cópias do nome, exercícios e metas. Alterações posteriores na ficha não alteram o treino iniciado. Apenas uma sessão pode ficar em andamento por usuário. **Retomar treino** recupera as séries já salvas, inclusive após recarregar a página.
 
-O realizado começa vazio: a meta é apenas uma sugestão. O usuário informa repetições/duração e carga, e escolhe **Concluir série**. Zero kg é um valor válido (por exemplo, peso corporal sem carga adicional); um campo vazio não significa zero. Também é possível pular uma série. Cada confirmação é salva no banco antes de iniciar o descanso.
+O realizado começa vazio: a meta é apenas uma sugestão. O usuário informa repetições/duração e carga, e escolhe **Concluir série**. Zero kg é um valor válido (por exemplo, peso corporal sem carga adicional); um campo vazio não significa zero. Também é possível pular uma série ou todas as séries pendentes de um exercício com uma única confirmação. Cada alteração é salva no banco antes de atualizar a interface.
 
-Para finalizar, é necessário concluir ao menos uma série e concluir ou pular todas as demais. Cancelamento preserva os registros parciais e os identifica como cancelados. A lista de **Treinos recentes** mostra os últimos 20 registros e permite consultar suas séries. Correção posterior do histórico e gráficos ficam para outra etapa.
+Para finalizar, é necessário concluir ao menos uma série e concluir ou pular todas as demais. Após a confirmação persistida, a interface retorna automaticamente para **Minhas fichas**. Cancelamento preserva os registros parciais e os identifica como cancelados. A lista de **Treinos recentes** mostra os últimos 20 registros e permite consultar suas séries. Correção posterior do histórico e gráficos ficam para outra etapa.
 
 Excluir uma ficha a arquiva: ela sai da lista, mas as sessões e referências históricas continuam existindo. Há confirmação visual antes de excluir, cancelar treino ou descartar edição.
 
@@ -53,6 +53,7 @@ Todas as rotas abaixo exigem sessão verificada. O proprietário vem exclusivame
 | POST | `{ action: "archive", id, version }` | Arquiva ficha |
 | POST | `{ action: "start", id, templateId, version }` | Cria sessão ou retorna a mesma operação já criada |
 | POST | `{ action: "set", id, version, setId, status, amount, load }` | Salva série e retorna sessão atualizada |
+| POST | `{ action: "skip-exercise", id, version, exerciseId }` | Pula todas as séries pendentes do exercício |
 | POST | `{ action: "finish" ou "cancel", id, version }` | Encerra a sessão |
 | POST | `{ action: "delete-session", id }` | Exclui uma sessão encerrada do histórico |
 

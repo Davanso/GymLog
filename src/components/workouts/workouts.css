@@ -229,6 +229,15 @@
   border-radius: 12px;
   padding: 24px;
 }
+.session-exercise__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.session-exercise__heading h3 {
+  margin: 0;
+}
 .session-exercise h3 span {
   color: var(--blue);
   font:
@@ -291,6 +300,10 @@
   .workout-empty,
   .session-exercise {
     padding: 20px;
+  }
+  .session-exercise__heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .rest-timer {
     grid-template-columns: 1fr;

@@ -232,7 +232,7 @@ export function workoutStore(db: PoolClient, userId: string) {
       throw new HttpError(409, 'O treino mudou em outra aba. Recarregue para continuar.');
     if (locked.rows[0].status !== 'in_progress')
       throw new HttpError(409, 'Este treino já foi encerrado.');
-    if (!['set', 'finish', 'cancel'].includes(String(input.action)))
+    if (!['set', 'skip-exercise', 'finish', 'cancel'].includes(String(input.action)))
       throw new HttpError(400, 'Operação inválida.');
     if (input.action === 'set') {
       const setId = uuid(input.setId);
@@ -261,6 +261,20 @@ export function workoutStore(db: PoolClient, userId: string) {
           load,
         ],
       );
+    }
+    if (input.action === 'skip-exercise') {
+      const exerciseId = uuid(input.exerciseId);
+      const skipped = await db.query(
+        `UPDATE session_sets s SET status='skipped',actual_reps=NULL,actual_duration_seconds=NULL,
+          actual_load_kg=NULL,completed_at=NULL
+         FROM session_exercises e
+         WHERE s.session_exercise_id=e.id AND e.id=$1 AND e.session_id=$2
+           AND s.user_id=$3 AND e.user_id=$3 AND s.status='pending'
+         RETURNING s.id`,
+        [exerciseId, id, userId],
+      );
+      if (!skipped.rows.length)
+        throw new HttpError(409, 'Este exercício não possui séries pendentes.');
     }
     if (input.action === 'finish') {
       const state = await session(id);

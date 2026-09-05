@@ -172,6 +172,33 @@ export function SessionRunner({
       () => void saveSet(input, set),
     );
   }
+  function skipExercise(exercise: SessionExercise) {
+    const pending = exercise.sets.filter((set) => set.status === 'pending').length;
+    requestConfirmation(
+      {
+        title: `Pular “${exercise.exercise_name_snapshot}”?`,
+        description: `${pending} ${pending === 1 ? 'série pendente ficará' : 'séries pendentes ficarão'} registrada${pending === 1 ? '' : 's'} como não realizada${pending === 1 ? '' : 's'}.`,
+        confirmLabel: 'Pular exercício',
+        cancelLabel: 'Continuar exercício',
+      },
+      () =>
+        void onMutation({
+          action: 'skip-exercise',
+          id: session.id,
+          version: session.version,
+          exerciseId: exercise.id,
+        }),
+    );
+  }
+  async function finishSession() {
+    const result = await onMutation({
+      action: 'finish',
+      id: session.id,
+      version: session.version,
+    });
+    if (!result) return;
+    onBack();
+  }
   const sets = session.exercises.flatMap((e) => e.sets),
     completed = sets.filter((s) => s.status === 'completed').length;
   const finalizable = completed > 0 && !sets.some((s) => s.status === 'pending');
@@ -213,9 +240,20 @@ export function SessionRunner({
       </p>
       {session.exercises.map((exercise, index) => (
         <section className="session-exercise" key={exercise.id}>
-          <h3>
-            <span>{String(index + 1).padStart(2, '0')}</span> {exercise.exercise_name_snapshot}
-          </h3>
+          <div className="session-exercise__heading">
+            <h3>
+              <span>{String(index + 1).padStart(2, '0')}</span> {exercise.exercise_name_snapshot}
+            </h3>
+            {active && exercise.sets.some((set) => set.status === 'pending') && (
+              <button
+                type="button"
+                className="text-button danger"
+                onClick={() => skipExercise(exercise)}
+              >
+                Pular exercício
+              </button>
+            )}
+          </div>
           {exercise.external_id && (
             <ExercisePreview
               externalId={exercise.external_id}
@@ -250,8 +288,7 @@ export function SessionRunner({
                   confirmLabel: 'Finalizar treino',
                   cancelLabel: 'Continuar treino',
                 },
-                () =>
-                  void onMutation({ action: 'finish', id: session.id, version: session.version }),
+                () => void finishSession(),
               )
             }
           >
