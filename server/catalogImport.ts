@@ -12,8 +12,12 @@ const slug = (value: string) =>
 const taxonomySlug = (value: string) =>
   value === 'Posteriores de coxa' ? 'posteriores' : slug(value);
 
-export async function importExercise(item: ProviderExercise) {
-  const sql = getDatabase();
+type ExerciseDatabase = ReturnType<typeof getDatabase>;
+
+export async function importExercise(
+  item: ProviderExercise,
+  sql: ExerciseDatabase = getDatabase(),
+) {
   const equipmentName = item.equipments[0] || 'Sem equipamento';
   const primaryGroup = item.primaryMuscleGroup || item.targetMuscles[0] || 'Corpo inteiro';
   const secondaryGroups = [

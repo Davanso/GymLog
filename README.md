@@ -120,6 +120,22 @@ Inicie o servidor de desenvolvimento:
 npm run dev:full
 ```
 
+### Testes e cobertura
+
+Execute todos os testes unitários e de estrutura com:
+
+```bash
+npm test
+```
+
+Para medir os módulos de regras de negócio, serviços HTTP e utilitários com limite mínimo de 80% em linhas, funções, branches e statements:
+
+```bash
+npm run test:coverage
+```
+
+O comando mostra o resumo no terminal e gera o relatório navegável em `coverage/index.html`.
+
 ### Commit Pattern
 
 | Tipo ou tipo(escopo) | Emoji | Código |
