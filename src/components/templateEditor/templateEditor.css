@@ -1,0 +1,7 @@
+.exercise-notes textarea:focus-visible,
+.plan-fields input:focus-visible,
+.exercise-picker input:focus-visible,
+.exercise-picker select:focus-visible {
+  border-color: var(--blue);
+  outline: 3px solid #dce7ff;
+}

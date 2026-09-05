@@ -1,0 +1,6 @@
+/* The shell and sidebar foundation live in app.css; this file owns account interactions. */
+.sidebar-toggle:focus-visible,
+.sidebar-tab:focus-visible {
+  outline: 3px solid #85aaff;
+  outline-offset: 2px;
+}

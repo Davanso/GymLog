@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { requireUser } from '../server/auth.js';
 import { HttpError, httpError, json, toWebRequest } from '../server/http.js';
-import { userTransaction } from '../server/user-transaction.js';
+import { userTransaction } from '../server/userTransaction.js';
 import { workoutStore } from '../server/workouts.js';
-import { uuid } from '../server/workout-input.js';
+import { uuid } from '../server/workoutInput.js';
 
 export default async function handler(request: IncomingMessage, response: ServerResponse) {
   try {

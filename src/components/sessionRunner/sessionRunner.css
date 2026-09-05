@@ -1,0 +1,4 @@
+.session-set input:focus-visible {
+  border-color: var(--blue);
+  outline: 3px solid #dce7ff;
+}

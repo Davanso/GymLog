@@ -9,7 +9,7 @@ import type {
   WorkoutDashboard,
 } from '../shared/workouts.js';
 import { HttpError } from './http.js';
-import { draft, loadKg, number, object, uuid } from './workout-input.js';
+import { draft, loadKg, number, object, uuid } from './workoutInput.js';
 
 export function workoutStore(db: PoolClient, userId: string) {
   async function templates(): Promise<Template[]> {
@@ -99,30 +99,51 @@ export function workoutStore(db: PoolClient, userId: string) {
       throw new HttpError(409, 'Esta ficha mudou em outra aba. Recarregue antes de editar.');
     return rows[0];
   }
+  async function validateNewTemplate(plan: TemplateDraft) {
+    const existing = (await templates()).find((template) => template.id === plan.id);
+    const saved = existing && {
+      id: existing.id,
+      name: existing.name,
+      notes: existing.notes,
+      restSeconds: existing.restSeconds,
+      items: existing.items,
+    };
+    if (saved && JSON.stringify(saved) !== JSON.stringify(plan))
+      throw new HttpError(409, 'Identificador de ficha já utilizado.');
+    if (existing) return existing;
+    const count = await db.query(
+      'SELECT count(*)::int n FROM workout_templates WHERE user_id=$1 AND archived_at IS NULL',
+      [userId],
+    );
+    if (count.rows[0].n >= 100)
+      throw new HttpError(400, 'Limite de 100 fichas. Exclua uma ficha antes de criar outra.');
+    return null;
+  }
+  async function writeTemplate(plan: TemplateDraft, version?: number) {
+    if (version === undefined) {
+      await db.query(
+        'INSERT INTO workout_templates(id,user_id,name,notes,rest_seconds) VALUES ($1,$2,$3,$4,$5)',
+        [plan.id, userId, plan.name, plan.notes, plan.restSeconds],
+      );
+      return;
+    }
+    await db.query(
+      'UPDATE workout_templates SET name=$3,notes=$4,rest_seconds=$5,version=version+1 WHERE id=$1 AND user_id=$2',
+      [plan.id, userId, plan.name, plan.notes, plan.restSeconds],
+    );
+    await db.query('DELETE FROM template_exercises WHERE template_id=$1 AND user_id=$2', [
+      plan.id,
+      userId,
+    ]);
+  }
   async function save(plan: TemplateDraft, version?: number) {
     // Serialize creates/retries for this user as well as the active-session invariant.
     await db.query('SELECT id FROM profiles WHERE id=$1 FOR UPDATE', [userId]);
     if (version === undefined) {
-      const existing = (await templates()).find((t) => t.id === plan.id);
-      if (existing) {
-        const saved = {
-          id: existing.id,
-          name: existing.name,
-          notes: existing.notes,
-          restSeconds: existing.restSeconds,
-          items: existing.items,
-        };
-        if (JSON.stringify(saved) !== JSON.stringify(plan))
-          throw new HttpError(409, 'Identificador de ficha já utilizado.');
-        return existing;
-      }
-      const count = await db.query(
-        'SELECT count(*)::int n FROM workout_templates WHERE user_id=$1 AND archived_at IS NULL',
-        [userId],
-      );
-      if (count.rows[0].n >= 100)
-        throw new HttpError(400, 'Limite de 100 fichas. Exclua uma ficha antes de criar outra.');
-    } else await lockTemplate(plan.id, version);
+      const existing = await validateNewTemplate(plan);
+      if (existing) return existing;
+    }
+    if (version !== undefined) await lockTemplate(plan.id, version);
     const catalog = await db.query(
       'SELECT id,tracking_mode FROM exercises WHERE id=ANY($1::uuid[]) AND archived_at IS NULL',
       [plan.items.map((i) => i.exerciseId)],
@@ -132,21 +153,7 @@ export function workoutStore(db: PoolClient, userId: string) {
       if (!exercise || (exercise.tracking_mode === 'reps') !== (item.reps !== null))
         throw new HttpError(400, 'Exercício indisponível ou meta incompatível.');
     }
-    if (version === undefined)
-      await db.query(
-        'INSERT INTO workout_templates(id,user_id,name,notes,rest_seconds) VALUES ($1,$2,$3,$4,$5)',
-        [plan.id, userId, plan.name, plan.notes, plan.restSeconds],
-      );
-    else {
-      await db.query(
-        'UPDATE workout_templates SET name=$3,notes=$4,rest_seconds=$5,version=version+1 WHERE id=$1 AND user_id=$2',
-        [plan.id, userId, plan.name, plan.notes, plan.restSeconds],
-      );
-      await db.query('DELETE FROM template_exercises WHERE template_id=$1 AND user_id=$2', [
-        plan.id,
-        userId,
-      ]);
-    }
+    await writeTemplate(plan, version);
     for (const [index, item] of plan.items.entries()) {
       const id = randomUUID();
       await db.query(
@@ -167,10 +174,10 @@ export function workoutStore(db: PoolClient, userId: string) {
       'SELECT id,template_id FROM workout_sessions WHERE id=$1 AND user_id=$2',
       [id, userId],
     );
-    if (existing.rows[0]) {
-      if (existing.rows[0].template_id !== templateId)
-        throw new HttpError(409, 'Identificador já utilizado.');
-      return session(id);
+    const started = existing.rows[0];
+    if (started?.template_id === templateId) return session(id);
+    if (started) {
+      throw new HttpError(409, 'Identificador já utilizado.');
     }
     if (
       (
@@ -225,6 +232,8 @@ export function workoutStore(db: PoolClient, userId: string) {
       throw new HttpError(409, 'O treino mudou em outra aba. Recarregue para continuar.');
     if (locked.rows[0].status !== 'in_progress')
       throw new HttpError(409, 'Este treino já foi encerrado.');
+    if (!['set', 'finish', 'cancel'].includes(String(input.action)))
+      throw new HttpError(400, 'Operação inválida.');
     if (input.action === 'set') {
       const setId = uuid(input.setId);
       const row = await db.query(
@@ -252,21 +261,25 @@ export function workoutStore(db: PoolClient, userId: string) {
           load,
         ],
       );
-    } else if (input.action === 'finish' || input.action === 'cancel') {
-      if (input.action === 'finish') {
-        const state = await session(id);
-        const sets = state.exercises.flatMap((e: SessionExercise) => e.sets);
-        if (!sets.some((s) => s.status === 'completed') || sets.some((s) => s.status === 'pending'))
-          throw new HttpError(
-            400,
-            'Conclua ao menos uma série e conclua ou pule todas as pendentes.',
-          );
-      }
+    }
+    if (input.action === 'finish') {
+      const state = await session(id);
+      const sets = state.exercises.flatMap((exercise: SessionExercise) => exercise.sets);
+      if (
+        !sets.some((set) => set.status === 'completed') ||
+        sets.some((set) => set.status === 'pending')
+      )
+        throw new HttpError(
+          400,
+          'Conclua ao menos uma série e conclua ou pule todas as pendentes.',
+        );
+    }
+    if (input.action === 'finish' || input.action === 'cancel') {
       await db.query(
         'UPDATE workout_sessions SET status=$3,ended_at=now() WHERE id=$1 AND user_id=$2',
         [id, userId, input.action === 'finish' ? 'completed' : 'cancelled'],
       );
-    } else throw new HttpError(400, 'Operação inválida.');
+    }
     await db.query('UPDATE workout_sessions SET version=version+1 WHERE id=$1 AND user_id=$2', [
       id,
       userId,

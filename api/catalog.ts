@@ -1,10 +1,10 @@
-import { createCatalogHandler } from '../server/catalog-handler.js';
+import { createCatalogHandler } from '../server/catalogHandler.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { requireUser } from '../server/auth.js';
 import { httpError } from '../server/http.js';
 import { HttpError, json, toWebRequest } from '../server/http.js';
-import { createExerciseProvider, parseCatalogRequest } from '../server/exercise-provider.js';
-import { importExercise } from '../server/catalog-import.js';
+import { createExerciseProvider, parseCatalogRequest } from '../server/exerciseProvider.js';
+import { importExercise } from '../server/catalogImport.js';
 
 const catalog = createCatalogHandler();
 export default async function handler(request: IncomingMessage, response: ServerResponse) {

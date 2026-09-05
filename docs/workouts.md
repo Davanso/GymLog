@@ -32,7 +32,7 @@ O halter centralizado fica reservado ao carregamento inicial sem dados, aparecen
 
 A seleção mantém os exercícios curados e os 200 exercícios disponibilizados pelo plano gratuito da AscendAPI. `npm run catalog:sync` percorre as oito páginas de 25 itens, consulta os detalhes e atualiza o catálogo de forma idempotente. Os nomes possuem uma tabela explícita em português; equipamentos, músculos, tipos e instruções passam pela camada de localização antes de chegar à interface. A chave da RapidAPI permanece somente no servidor.
 
-Os músculos detalhados do fornecedor são consolidados em grupos curtos no arquivo `server/muscle-group-map.ts`. Esse é o ponto único para ajustes manuais: `muscleGroupMap` agrupa anatomia, `bodyPartGroup` define categorias por parte corporal e `exerciseGroupOverrides` corrige exercícios específicos cujo cadastro do fornecedor é inconsistente. Depois de uma alteração, execute `npm run catalog:sync`. A lista atual é Abdômen, Adutores, Antebraços, Bíceps, Corpo inteiro, Costas, Glúteos, Ombros, Panturrilhas, Peito, Pescoço, Posteriores de coxa, Quadríceps e Tríceps.
+Os músculos detalhados do fornecedor são consolidados em grupos curtos no arquivo `server/muscleGroupMap.ts`. Esse é o ponto único para ajustes manuais: `muscleGroupMap` agrupa anatomia, `bodyPartGroup` define categorias por parte corporal e `exerciseGroupOverrides` corrige exercícios específicos cujo cadastro do fornecedor é inconsistente. Depois de uma alteração, execute `npm run catalog:sync`. A lista atual é Abdômen, Adutores, Antebraços, Bíceps, Corpo inteiro, Costas, Glúteos, Ombros, Panturrilhas, Peito, Pescoço, Posteriores de coxa, Quadríceps e Tríceps.
 
 O dashboard separa `primary_muscle_groups` de `secondary_muscle_groups`. O filtro por grupo usa somente os principais; músculos auxiliares aparecem como informação e continuam pesquisáveis por texto, mas não colocam o exercício em outra categoria.
 
@@ -54,8 +54,9 @@ Todas as rotas abaixo exigem sessão verificada. O proprietário vem exclusivame
 | POST | `{ action: "start", id, templateId, version }` | Cria sessão ou retorna a mesma operação já criada |
 | POST | `{ action: "set", id, version, setId, status, amount, load }` | Salva série e retorna sessão atualizada |
 | POST | `{ action: "finish" ou "cancel", id, version }` | Encerra a sessão |
+| POST | `{ action: "delete-session", id }` | Exclui uma sessão encerrada do histórico |
 
-`template` tem `id` UUID gerado pelo cliente, `name`, `notes`, `restSeconds` e `items`. O descanso é único por ficha. Cada item contém `exerciseId`, `sets`, `reps`, `seconds` e `load`; o mesmo `exerciseId` não pode aparecer duas vezes. Apenas `reps` ou `seconds` fica preenchido; o outro deve ser `null`. `version` de início é a versão da ficha; as operações de série/finalização usam a versão da sessão.
+`template` tem `id` UUID gerado pelo cliente, `name`, `notes`, `restSeconds` e `items`. O descanso é único por ficha. Cada item contém `exerciseId`, `sets`, `reps`, `repsMax`, `seconds`, `load` e `notes`; o mesmo `exerciseId` não pode aparecer duas vezes. Apenas a faixa de repetições ou `seconds` fica preenchida. `version` de início é a versão da ficha; as operações de série/finalização usam a versão da sessão.
 
 No registro da série, `status` aceita `completed` ou `skipped`. `amount` corresponde a repetições ou segundos conforme o snapshot. `load` é a carga real em kg. Para uma série pulada, os valores reais são descartados.
 
@@ -71,13 +72,15 @@ Criação e início bloqueiam a linha do perfil para serializar requisições do
 
 ```bash
 npm run test:backend
-npm run test:workouts:db
+npm run test:frontend
+npm run test:tooling
+npm run test:integration
 npm run build
 npm run lint
 npm run fmt
 ```
 
-`test:workouts:db` é explícito e usa `MIGRATION_DATABASE_URL` ou `DATABASE_URL` do `.env`. Cria identidades de perfil fictícias apenas dentro de uma transação com FK adiada e rollback obrigatório; não cria usuários no Neon Auth e não persiste dados de teste. Use preferencialmente uma branch de desenvolvimento. Testa isolamento entre dois usuários, repetição de criação/início, conflito de versão, snapshots, carga zero, séries puladas, finalização e arquivamento sem perder histórico.
+`test:integration` é explícito e usa `MIGRATION_DATABASE_URL` ou `DATABASE_URL` do `.env`. Cria identidades de perfil fictícias apenas dentro de uma transação com FK adiada e rollback obrigatório; não cria usuários no Neon Auth e não persiste dados de teste. Use preferencialmente uma branch de desenvolvimento. Testa isolamento entre dois usuários, repetição de criação/início, conflito de versão, snapshots, carga zero, séries puladas, finalização, exclusão do histórico e arquivamento sem perder referências.
 
 Os testes unitários cobrem limites e tipos de entrada e o relógio com tempo simulado. A interface foi conferida com dados simulados no navegador, em desktop e largura de celular, incluindo criação, início, registro de série, pausa e +30 segundos. Nenhum treino foi criado na conta real do usuário durante essa conferência.
 

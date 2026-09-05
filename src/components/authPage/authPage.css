@@ -1,0 +1,5 @@
+.auth-form button:focus-visible,
+.auth-form input:focus-visible {
+  outline: 3px solid #aac4ff;
+  outline-offset: 2px;
+}

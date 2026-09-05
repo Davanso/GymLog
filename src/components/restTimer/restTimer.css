@@ -1,0 +1,4 @@
+.rest-timer button:focus-visible {
+  outline: 3px solid #aac4ff;
+  outline-offset: 2px;
+}

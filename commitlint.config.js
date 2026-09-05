@@ -1,4 +1,4 @@
-import { validateHeader } from './scripts/commit-format.js';
+import { validateHeader } from './tools/git/commitFormat.js';
 
 export default {
   plugins: [{ rules: { 'project-format': ({ header }) => validateHeader(header) } }],

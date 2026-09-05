@@ -53,11 +53,11 @@ Configure a chave no `.env` do servidor e execute `npm run dev:full`. O endpoint
 - `/api/catalog?name=bench&limit=10`: exercícios com filtros e paginação.
 - `/api/catalog?resource=exercise&id=exr_...`: detalhe com imagens, vídeo e instruções.
 
-Consulte o [guia da integração](docs/exercise-api.md) para variáveis, filtros, respostas e testes. As consultas são em tempo real: o cache e a persistência dependem do plano do fornecedor, e suas URLs de mídia rotacionam semanalmente. Nenhum conteúdo externo foi importado no Neon nesta etapa.
+Consulte o [guia da integração](docs/exerciseApi.md) para variáveis, filtros, respostas e testes. As consultas são em tempo real: o cache e a persistência dependem do plano do fornecedor, e suas URLs de mídia rotacionam semanalmente. Nenhum conteúdo externo foi importado no Neon nesta etapa.
 
 ## Stack
 
-O [planejamento do banco de dados](docs/database-plan.md) detalha tabelas, relações e decisões de produto. A estrutura inicial já foi aplicada. O [guia de operação](docs/database-operations.md) documenta as migrations, o acesso ao banco e o que falta integrar na API.
+O [planejamento do banco de dados](docs/databasePlan.md) detalha tabelas, relações e decisões de produto. A estrutura inicial já foi aplicada. O [guia de operação](docs/databaseOperations.md) documenta as migrations, o acesso ao banco e o que falta integrar na API.
 
 ```bash
 npm run db:status   # Consultar migrations e contagens do catálogo
@@ -80,6 +80,25 @@ Os comandos usam o `.env` local. O banco tem 10 grupos musculares, 6 equipamento
 O GymLog é uma **SPA (Single Page Application)** em React, sem Next.js. O frontend já está publicado na Vercel. A configuração das funções e da SPA está versionada em `vercel.json`.
 
 ## Como executar
+
+### Estrutura do projeto
+
+```text
+src/components/   componentes React, cada um com pasta e CSS próprios
+src/hooks/        hooks reutilizáveis
+src/services/     clientes de autenticação e API
+src/utils/        formatação e regras compartilhadas da interface
+server/           domínio, integrações e persistência do backend
+api/              funções HTTP da Vercel
+tests/            specs de backend, frontend, integração e ferramentas
+tools/            comandos administrativos de banco, catálogo e Git
+database/         migrations imutáveis e seeds do catálogo
+docs/             documentação técnica e de produto
+```
+
+Código e testes usam nomes de arquivo em camelCase. Testes terminam em `.spec`.
+As migrations mantêm os nomes originais porque o banco registra nome e checksum
+de cada arquivo aplicado.
 
 ### Pré-requisitos
 

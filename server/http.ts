@@ -29,6 +29,19 @@ export function appOrigin() {
     throw new HttpError(503, 'Origem da aplicação inválida.');
   return url.origin;
 }
+async function requestBody(request: IncomingMessage) {
+  const parsed = (request as IncomingMessage & { body?: unknown }).body;
+  if (parsed !== undefined) return typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > 16_384) throw new HttpError(413, 'Requisição muito grande.');
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
 export async function toWebRequest(request: IncomingMessage) {
   const origin = appOrigin();
   const method = request.method || 'GET';
@@ -41,19 +54,7 @@ export async function toWebRequest(request: IncomingMessage) {
   }
   let body: string | undefined;
   if (method !== 'GET' && method !== 'HEAD') {
-    const parsed = (request as IncomingMessage & { body?: unknown }).body;
-    if (parsed !== undefined) body = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
-    else {
-      const chunks: Buffer[] = [];
-      let size = 0;
-      for await (const chunk of request) {
-        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        size += buffer.length;
-        if (size > 16_384) throw new HttpError(413, 'Requisição muito grande.');
-        chunks.push(buffer);
-      }
-      body = Buffer.concat(chunks).toString('utf8');
-    }
+    body = await requestBody(request);
     if (Buffer.byteLength(body || '') > 16_384)
       throw new HttpError(413, 'Requisição muito grande.');
   }

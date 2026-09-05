@@ -1,2 +1,2 @@
-node scripts/add-commit-emoji.js "$1" || exit 1
+node tools/git/addCommitEmoji.js "$1" || exit 1
 npm run --silent commitlint -- --edit "$1"
