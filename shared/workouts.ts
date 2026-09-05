@@ -16,8 +16,10 @@ export type PlanItem = {
   exerciseId: string;
   sets: number;
   reps: number | null;
+  repsMax: number | null;
   seconds: number | null;
   load: number;
+  notes: string;
 };
 export type TemplateDraft = {
   id: string;
@@ -31,6 +33,7 @@ export type SessionSet = {
   id: string;
   position: number;
   target_reps_min: number | null;
+  target_reps_max: number | null;
   target_duration_seconds: number | null;
   target_load_kg: number | null;
   rest_seconds: number | null;
@@ -44,6 +47,7 @@ export type SessionExercise = {
   exercise_name_snapshot: string;
   tracking_mode_snapshot: 'reps' | 'duration';
   load_convention_snapshot: string;
+  notes: string;
   external_id?: string | null;
   image_url?: string | null;
   video_url?: string | null;

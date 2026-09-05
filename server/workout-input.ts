@@ -43,15 +43,20 @@ export function draft(value: unknown): TemplateDraft {
   const items = input.items.map((raw) => {
     const item = object(raw);
     const reps = item.reps === null ? null : number(item.reps, 1, 1000);
+    const repsMax = reps === null ? null : number(item.repsMax ?? reps, 1, 1000);
     const seconds = item.seconds === null ? null : number(item.seconds, 1, 86400);
     if ((reps === null) === (seconds === null))
       throw new HttpError(400, 'Informe repetições ou duração para cada exercício.');
+    if (reps !== null && repsMax !== null && repsMax < reps)
+      throw new HttpError(400, 'A repetição máxima deve ser igual ou maior que a mínima.');
     return {
       exerciseId: uuid(item.exerciseId),
       sets: number(item.sets, 1, 10),
       reps,
+      repsMax,
       seconds,
       load: loadKg(item.load),
+      notes: text(item.notes ?? '', 2000),
     };
   });
   if (new Set(items.map((item) => item.exerciseId)).size !== items.length)

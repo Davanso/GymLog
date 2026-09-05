@@ -5,6 +5,7 @@ import { readClock, startClock, type RestClock } from './rest-clock';
 import { loadLabel } from './labels';
 import { useConfirmation } from '../../components/useConfirmation';
 import { ExercisePreview } from './ExercisePreview';
+import { formatRepRange } from './rep-range';
 
 type SetInput = { setId: string; status: 'completed' | 'skipped'; amount?: number; load?: number };
 function SetRow({
@@ -35,7 +36,10 @@ function SetRow({
       <div>
         <strong>Série {set.position}</strong>
         <small>
-          Meta: {set.target_reps_min ?? set.target_duration_seconds ?? '—'}{' '}
+          Meta:{' '}
+          {duration
+            ? (set.target_duration_seconds ?? '—')
+            : formatRepRange(set.target_reps_min, set.target_reps_max)}{' '}
           {duration ? 's' : 'reps'} · {set.target_load_kg ?? 0}{' '}
           {loadLabel(exercise.load_convention_snapshot)}
         </small>
@@ -49,7 +53,11 @@ function SetRow({
               required
               min={1}
               max={duration ? 86400 : 1000}
-              placeholder={String(set.target_reps_min ?? set.target_duration_seconds ?? '')}
+              placeholder={
+                duration
+                  ? String(set.target_duration_seconds ?? '')
+                  : formatRepRange(set.target_reps_min, set.target_reps_max)
+              }
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
@@ -185,6 +193,7 @@ export function SessionRunner({
               videoUrl={exercise.video_url}
             />
           )}
+          {exercise.notes && <p className="exercise-guidance">{exercise.notes}</p>}
           {exercise.sets.map((set) => (
             <SetRow
               key={set.id}

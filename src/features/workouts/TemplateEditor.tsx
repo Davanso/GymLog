@@ -5,6 +5,35 @@ import { loadLabel } from './labels';
 import { useConfirmation } from '../../components/useConfirmation';
 import { matchesExercise, templateChanged } from './exercise-search';
 import { ExercisePreview } from './ExercisePreview';
+import { formatRepRange, parseRepRange } from './rep-range';
+
+function RepRangeInput({
+  min,
+  max,
+  onChange,
+}: {
+  min: number | null;
+  max: number | null;
+  onChange: (min: number, max: number) => void;
+}) {
+  const [value, setValue] = useState(() => formatRepRange(min, max));
+  return (
+    <input
+      type="text"
+      required
+      inputMode="numeric"
+      placeholder="10-12"
+      value={value}
+      onChange={(event) => {
+        const next = event.target.value;
+        const range = parseRepRange(next);
+        setValue(next);
+        event.target.setCustomValidity(range ? '' : 'Use 10, 10-12 ou de 10 a 12.');
+        if (range) onChange(range.min, range.max);
+      }}
+    />
+  );
+}
 
 export function TemplateEditor({
   initial,
@@ -196,23 +225,22 @@ export function TemplateEditor({
                   </label>
                   <label>
                     {exercise?.tracking_mode === 'duration' ? 'Duração (s)' : 'Repetições'}
-                    <input
-                      type="number"
-                      required
-                      min={1}
-                      max={exercise?.tracking_mode === 'duration' ? 86400 : 1000}
-                      value={
-                        (exercise?.tracking_mode === 'duration' ? item.seconds : item.reps) || ''
-                      }
-                      onChange={(e) =>
-                        update(
-                          index,
-                          exercise?.tracking_mode === 'duration'
-                            ? { seconds: e.target.valueAsNumber }
-                            : { reps: e.target.valueAsNumber },
-                        )
-                      }
-                    />
+                    {exercise?.tracking_mode === 'reps' ? (
+                      <RepRangeInput
+                        min={item.reps}
+                        max={item.repsMax}
+                        onChange={(min, max) => update(index, { reps: min, repsMax: max })}
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        max={86400}
+                        value={item.seconds || ''}
+                        onChange={(e) => update(index, { seconds: e.target.valueAsNumber })}
+                      />
+                    )}
                   </label>
                   <label>
                     Carga · {loadLabel(exercise?.load_convention || '')}
@@ -227,6 +255,16 @@ export function TemplateEditor({
                     />
                   </label>
                 </div>
+                <label className="exercise-notes">
+                  Observação do exercício (opcional)
+                  <textarea
+                    maxLength={2000}
+                    rows={2}
+                    placeholder="Ex.: pode ser substituído por outro exercício"
+                    value={item.notes ?? ''}
+                    onChange={(event) => update(index, { notes: event.target.value })}
+                  />
+                </label>
                 <div className="workout-actions planned-item__actions">
                   {plan.items.length > 1 && (
                     <>
@@ -349,8 +387,10 @@ export function TemplateEditor({
                             exerciseId: exercise.id,
                             sets: 3,
                             reps: exercise.tracking_mode === 'reps' ? 10 : null,
+                            repsMax: exercise.tracking_mode === 'reps' ? 10 : null,
                             seconds: exercise.tracking_mode === 'duration' ? 30 : null,
                             load: 0,
+                            notes: '',
                           },
                         ],
                       })

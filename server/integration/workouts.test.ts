@@ -34,7 +34,17 @@ test('database: tenant isolation, plan CRUD, idempotent start, version conflicts
       name: 'Verification plan',
       notes: '',
       restSeconds: 60,
-      items: [{ exerciseId: exercise.id, sets: 2, reps: 10, seconds: null, load: 20 }],
+      items: [
+        {
+          exerciseId: exercise.id,
+          sets: 2,
+          reps: 10,
+          repsMax: 12,
+          seconds: null,
+          load: 20,
+          notes: 'Pode ser substituído pela variação com halteres.',
+        },
+      ],
     };
     const created = await store.execute({ action: 'create', template: plan });
     assert.equal('version' in created && created.version, 1);
@@ -49,6 +59,9 @@ test('database: tenant isolation, plan CRUD, idempotent start, version conflicts
       version: 1,
     })) as Session;
     assert.equal(workout.exercises[0].sets.length, 2);
+    assert.equal(workout.exercises[0].notes, plan.items[0].notes);
+    assert.equal(workout.exercises[0].sets[0].target_reps_min, 10);
+    assert.equal(workout.exercises[0].sets[0].target_reps_max, 12);
     assert.equal(workout.exercises[0].sets[0].actual_load_kg, null);
     assert.equal(
       ((await store.execute({ action: 'start', id, templateId: plan.id, version: 1 })) as Session)
@@ -101,6 +114,7 @@ test('database: tenant isolation, plan CRUD, idempotent start, version conflicts
     const other = workoutStore(db, userB);
     assert.equal((await other.dashboard()).templates.length, 0);
     await denied(() => other.session(id), 404);
+    await denied(() => other.execute({ action: 'delete-session', id }), 404);
     await denied(() => other.execute({ action: 'archive', id: plan.id, version: 2 }), 404);
     await denied(
       () =>
@@ -142,6 +156,8 @@ test('database: tenant isolation, plan CRUD, idempotent start, version conflicts
     assert.equal((await store.dashboard()).templates.filter((t) => t.id === plan.id).length, 0);
     assert.equal((await store.session(id)).exercises[0].sets[0].actual_reps, 12);
     assert.equal((await store.dashboard()).active, null);
+    await store.execute({ action: 'delete-session', id });
+    await denied(() => store.session(id), 404);
     const duration = catalog.find((e) => e.tracking_mode === 'duration')!;
     assert.ok(duration);
     const timed = {

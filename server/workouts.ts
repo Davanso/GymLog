@@ -18,8 +18,8 @@ export function workoutStore(db: PoolClient, userId: string) {
       [userId],
     );
     const items = await db.query(
-      `SELECT te.template_id, te.exercise_id, count(s.id)::int sets,
-      min(s.target_reps_min) reps,min(s.target_duration_seconds) seconds,min(s.target_load_kg)::float8 load
+      `SELECT te.template_id, te.exercise_id, coalesce(te.notes,'') notes,count(s.id)::int sets,
+      min(s.target_reps_min) reps,min(s.target_reps_max) "repsMax",min(s.target_duration_seconds) seconds,min(s.target_load_kg)::float8 load
       FROM template_exercises te JOIN template_sets s ON s.template_exercise_id=te.id
       WHERE te.user_id=$1 AND te.template_id=ANY($2::uuid[]) GROUP BY te.id ORDER BY te.position`,
       [userId, rows.map((r) => r.id)],
@@ -32,8 +32,10 @@ export function workoutStore(db: PoolClient, userId: string) {
           exerciseId: i.exercise_id,
           sets: i.sets,
           reps: i.reps,
+          repsMax: i.repsMax,
           seconds: i.seconds,
           load: i.load,
+          notes: i.notes,
         })),
     })) as Template[];
   }
@@ -41,13 +43,13 @@ export function workoutStore(db: PoolClient, userId: string) {
     const { rows } = await db.query(
       `SELECT json_build_object('id',w.id,'name',w.name,'version',w.version,'status',w.status,
         'started_at',w.started_at,'ended_at',w.ended_at,'exercises',coalesce((
-          SELECT json_agg(json_build_object('id',e.id,'exercise_name_snapshot',e.exercise_name_snapshot,
+          SELECT json_agg(json_build_object('id',e.id,'exercise_name_snapshot',e.exercise_name_snapshot,'notes',coalesce(e.notes,''),
             'tracking_mode_snapshot',e.tracking_mode_snapshot,'load_convention_snapshot',e.load_convention_snapshot,
             'external_id',(SELECT external_id FROM exercises WHERE id=e.exercise_id),
             'image_url',(SELECT url FROM exercise_media WHERE exercise_id=e.exercise_id AND kind='image' ORDER BY position LIMIT 1),
             'video_url',(SELECT url FROM exercise_media WHERE exercise_id=e.exercise_id AND kind='video' ORDER BY position LIMIT 1),
             'sets',coalesce((SELECT json_agg(json_build_object('id',s.id,'position',s.position,
-              'target_reps_min',s.target_reps_min,'target_duration_seconds',s.target_duration_seconds,
+              'target_reps_min',s.target_reps_min,'target_reps_max',s.target_reps_max,'target_duration_seconds',s.target_duration_seconds,
               'target_load_kg',s.target_load_kg::float8,'rest_seconds',s.rest_seconds,
               'actual_reps',s.actual_reps,'actual_duration_seconds',s.actual_duration_seconds,
               'actual_load_kg',s.actual_load_kg::float8,'status',s.status) ORDER BY s.position)
@@ -148,13 +150,13 @@ export function workoutStore(db: PoolClient, userId: string) {
     for (const [index, item] of plan.items.entries()) {
       const id = randomUUID();
       await db.query(
-        'INSERT INTO template_exercises(id,user_id,template_id,exercise_id,position) VALUES ($1,$2,$3,$4,$5)',
-        [id, userId, plan.id, item.exerciseId, index + 1],
+        'INSERT INTO template_exercises(id,user_id,template_id,exercise_id,position,notes) VALUES ($1,$2,$3,$4,$5,$6)',
+        [id, userId, plan.id, item.exerciseId, index + 1, item.notes],
       );
       await db.query(
         `INSERT INTO template_sets(user_id,template_exercise_id,position,target_reps_min,target_reps_max,target_duration_seconds,target_load_kg,rest_seconds)
-        SELECT $1,$2,n,$4,$4,$5,$6,$7 FROM generate_series(1,$3::int) n`,
-        [userId, id, item.sets, item.reps, item.seconds, item.load, plan.restSeconds],
+        SELECT $1,$2,n,$4,$5,$6,$7,$8 FROM generate_series(1,$3::int) n`,
+        [userId, id, item.sets, item.reps, item.repsMax, item.seconds, item.load, plan.restSeconds],
       );
     }
     return { ...plan, version: version === undefined ? 1 : version + 1 };
@@ -286,6 +288,15 @@ export function workoutStore(db: PoolClient, userId: string) {
           'UPDATE workout_templates SET archived_at=now(),version=version+1 WHERE id=$1 AND user_id=$2',
           [id, userId],
         );
+        return { id };
+      }
+      case 'delete-session': {
+        const id = uuid(input.id);
+        const deleted = await db.query(
+          "DELETE FROM workout_sessions WHERE id=$1 AND user_id=$2 AND status <> 'in_progress' RETURNING id",
+          [id, userId],
+        );
+        if (!deleted.rows[0]) throw new HttpError(404, 'Treino encerrado não encontrado.');
         return { id };
       }
       case 'start':

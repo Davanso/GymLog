@@ -16,7 +16,7 @@ export function Workouts({
   registerNavigationGuard: (guard: ((action: () => void) => void) | null) => void;
 }) {
   const { requestConfirmation, confirmation } = useConfirmation();
-  const cacheKey = `gymlog:dashboard:v4:${userId}`;
+  const cacheKey = `gymlog:dashboard:v5:${userId}`;
   const [data, setData] = useState<WorkoutDashboard | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
@@ -253,7 +253,12 @@ export function Workouts({
                           {data.exercises.find((e) => e.id === item.exerciseId)?.name ||
                             'Exercício'}{' '}
                           <span>
-                            {item.sets} × {item.reps ?? `${item.seconds}s`}
+                            {item.sets} ×{' '}
+                            {item.reps === null
+                              ? `${item.seconds}s`
+                              : item.repsMax && item.repsMax !== item.reps
+                                ? `${item.reps}-${item.repsMax}`
+                                : item.reps}
                           </span>
                         </li>
                       ))}
@@ -326,28 +331,63 @@ export function Workouts({
                             {item.status === 'completed' ? 'Concluído' : 'Cancelado'}
                           </small>
                         </div>
-                        <button
-                          type="button"
-                          className="text-button"
-                          onClick={() => {
-                            const cached = history.current.get(item.id);
-                            if (cached) {
-                              setSession(cached);
-                              return;
+                        <div className="recent-workout-actions">
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => {
+                              const cached = history.current.get(item.id);
+                              if (cached) {
+                                setSession(cached);
+                                return;
+                              }
+                              void perform(async () => {
+                                const result = await workoutApi<Session>(
+                                  undefined,
+                                  undefined,
+                                  item.id,
+                                );
+                                history.current.set(result.id, result);
+                                setSession(result);
+                              }, 'Carregando registro…');
+                            }}
+                          >
+                            Ver registro →
+                          </button>
+                          <button
+                            type="button"
+                            className="text-button danger"
+                            onClick={() =>
+                              requestConfirmation(
+                                {
+                                  title: `Excluir “${item.name}” do histórico?`,
+                                  description:
+                                    'As séries, cargas e anotações deste treino serão apagadas permanentemente.',
+                                  confirmLabel: 'Excluir do histórico',
+                                  cancelLabel: 'Manter treino',
+                                },
+                                () => {
+                                  void perform(async () => {
+                                    await workoutApi({ action: 'delete-session', id: item.id });
+                                    history.current.delete(item.id);
+                                    setData((current) =>
+                                      current
+                                        ? {
+                                            ...current,
+                                            recent: current.recent.filter(
+                                              (sessionItem) => sessionItem.id !== item.id,
+                                            ),
+                                          }
+                                        : current,
+                                    );
+                                  }, 'Excluindo treino…');
+                                },
+                              )
                             }
-                            void perform(async () => {
-                              const result = await workoutApi<Session>(
-                                undefined,
-                                undefined,
-                                item.id,
-                              );
-                              history.current.set(result.id, result);
-                              setSession(result);
-                            }, 'Carregando registro…');
-                          }}
-                        >
-                          Ver registro →
-                        </button>
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>

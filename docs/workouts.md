@@ -2,7 +2,11 @@
 
 ## Fluxo entregue
 
-Depois do login, **Meus treinos** permite criar, editar e excluir fichas. Cada ficha tem nome, observações e até 20 exercícios ordenados do catálogo local. Para cada exercício: 1–10 séries, repetições ou duração conforme o exercício, carga em kg e descanso de 0–3600 segundos. As séries do mesmo exercício têm metas iguais nesta interface.
+Depois do login, **Meus treinos** permite criar, editar e excluir fichas. Cada ficha tem nome, observações e até 20 exercícios ordenados do catálogo local. Para cada exercício: observação própria, 1–10 séries, repetição única ou faixa (como `10-12` e `de 10 a 12`), duração quando aplicável e carga em kg. O descanso de 0–3600 segundos pertence à ficha. As séries do mesmo exercício têm metas iguais nesta interface.
+
+Treinos concluídos ou cancelados podem ser apagados permanentemente na seção
+**Treinos recentes**. A operação exige confirmação, remove séries e exercícios
+da sessão em cascata e só aceita registros encerrados pertencentes ao usuário.
 
 **Iniciar treino** cria uma sessão com cópias do nome, exercícios e metas. Alterações posteriores na ficha não alteram o treino iniciado. Apenas uma sessão pode ficar em andamento por usuário. **Retomar treino** recupera as séries já salvas, inclusive após recarregar a página.
 

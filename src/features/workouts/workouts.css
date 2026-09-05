@@ -195,6 +195,11 @@
 .recent-workouts {
   margin-top: 40px;
 }
+.recent-workout-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
 .rest-timer {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -413,6 +418,22 @@
   font-weight: 650;
   color: var(--ink);
   background: #fafbfd;
+}
+.exercise-notes {
+  margin: 0 22px 22px;
+}
+.exercise-notes textarea {
+  margin-top: 6px;
+  resize: vertical;
+}
+.exercise-guidance {
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  border-left: 3px solid #aac0e7;
+  background: #f5f8fc;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 .planned-item__actions {
   border-top: 1px solid #e9eef5;

@@ -10,12 +10,23 @@ import {
   remainingMs,
   resumeClock,
 } from '../../src/features/workouts/rest-clock.js';
+import { formatRepRange, parseRepRange } from '../../src/features/workouts/rep-range.js';
 
 test('workout input rejects invalid modes, large plans, non-finite metrics and invalid ids', () => {
-  const item = { exerciseId: randomUUID(), sets: 3, reps: 10, seconds: null, load: 0 };
+  const item = {
+    exerciseId: randomUUID(),
+    sets: 3,
+    reps: 10,
+    repsMax: 12,
+    seconds: null,
+    load: 0,
+    notes: ' Alternativa: rosca na polia. ',
+  };
   const valid = { id: randomUUID(), name: ' A ', notes: '', restSeconds: 60, items: [item] };
   assert.equal(draft(valid).name, 'A');
   assert.equal(draft(valid).items[0].load, 0);
+  assert.equal(draft(valid).items[0].notes, 'Alternativa: rosca na polia.');
+  assert.equal(draft(valid).items[0].repsMax, 12);
   for (const patch of [
     { sets: 0 },
     { sets: 1.2 },
@@ -25,6 +36,7 @@ test('workout input rejects invalid modes, large plans, non-finite metrics and i
     { load: 0.0001 },
     { seconds: 10 },
     { reps: null },
+    { repsMax: 9 },
     { exerciseId: 'bad' },
   ])
     assert.throws(() => draft({ ...valid, items: [{ ...item, ...patch }] }));
@@ -34,6 +46,13 @@ test('workout input rejects invalid modes, large plans, non-finite metrics and i
   assert.throws(() => draft({ ...valid, restSeconds: -1 }));
   assert.throws(() => draft({ ...valid, restSeconds: 3601 }));
   assert.throws(() => draft({ ...valid, items: [item, item] }));
+});
+test('repetition ranges accept natural compact formats', () => {
+  assert.deepEqual(parseRepRange('10'), { min: 10, max: 10 });
+  assert.deepEqual(parseRepRange('10-12'), { min: 10, max: 12 });
+  assert.deepEqual(parseRepRange('de 10 a 12'), { min: 10, max: 12 });
+  assert.equal(parseRepRange('12-10'), null);
+  assert.equal(formatRepRange(10, 12), '10-12');
 });
 test('rest clock uses elapsed time, pauses without drift and extends paused or completed rest', () => {
   const clock = { setId: 'set', remaining: 60000, deadline: 61000 };
@@ -67,7 +86,15 @@ test('exercise search combines muscle groups, equipment and name without accents
 });
 
 test('unchanged editor ignores server metadata and trimming, but detects order and values', () => {
-  const first = { exerciseId: randomUUID(), sets: 3, reps: 10, seconds: null, load: 0 };
+  const first = {
+    exerciseId: randomUUID(),
+    sets: 3,
+    reps: 10,
+    repsMax: 10,
+    seconds: null,
+    load: 0,
+    notes: '',
+  };
   const second = { ...first, exerciseId: randomUUID() };
   const initial = {
     id: randomUUID(),
