@@ -2,6 +2,9 @@ export type RestClock = { deadline: number | null; remaining: number; setId: str
 export function remainingMs(clock: RestClock, now = Date.now()) {
   return Math.max(0, clock.deadline === null ? clock.remaining : clock.deadline - now);
 }
+export function hasActiveRest(clock: RestClock | null, now = Date.now()) {
+  return Boolean(clock && remainingMs(clock, now) > 0);
+}
 export function pauseClock(clock: RestClock, now = Date.now()): RestClock {
   return { ...clock, remaining: remainingMs(clock, now), deadline: null };
 }
