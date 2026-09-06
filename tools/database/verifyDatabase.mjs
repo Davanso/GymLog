@@ -66,8 +66,11 @@ try {
     '42501',
   );
   await denied("UPDATE equipment SET name='Forbidden' WHERE slug='barra'", [], '42501');
-  const exercise = (await client.query("SELECT id FROM exercises WHERE slug='supino-reto-barra'"))
-    .rows[0].id;
+  const exercise = (
+    await client.query(
+      "SELECT id FROM exercises WHERE archived_at IS NULL AND tracking_mode='reps' ORDER BY name LIMIT 1",
+    )
+  ).rows[0].id;
   await client.query(
     "INSERT INTO workout_templates(id,user_id,name) VALUES ($1,$2,'Original template')",
     [template, userA],

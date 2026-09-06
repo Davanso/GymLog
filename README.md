@@ -27,7 +27,7 @@ O **GymLog** nasce para reunir essas informações em um diário de treino simpl
 
 A experiência planejada é direta: escolher os exercícios, montar o treino e registrar séries, repetições e cargas. Um catálogo com demonstrações em GIF vai servir de referência visual durante a consulta dos exercícios.
 
-> **Estado atual:** login e email funcionando; fichas, sessões com registro de séries e timer de descanso implementados. Dados privados protegidos por sessão e RLS no Neon. Consulte os guias de [autenticação](docs/authentication.md) e [treinos e descanso](docs/workouts.md).
+> **Estado atual:** login e email funcionando; fichas, sessões com registro de séries, timer de descanso e vínculos entre coach e aluno implementados. Dados privados protegidos por sessão e RLS no Neon. Consulte os guias de [autenticação](docs/authentication.md), [treinos e descanso](docs/workouts.md) e [coach e aluno](docs/coachStudentPlan.md).
 
 ## Funcionalidades
 
@@ -42,6 +42,7 @@ O que queremos construir:
 | 📈 Histórico | Consultar as séries dos treinos recentes | Implementado; gráficos futuros |
 | 💾 Persistência | Salvar fichas e séries; retomar treino em andamento | Implementado |
 | ⏱️ Descanso | Timer automático com pausa, +30 s e aviso sonoro opcional | Implementado |
+| 👥 Coach e alunos | Convites, fichas atribuídas e acompanhamento do histórico | Implementado |
 
 O banco escolhido é PostgreSQL 18 no Neon. A integração de catálogo com **AscendAPI / ExerciseDB V2** já consulta exercícios, imagens e vídeos pelo backend. A seleção nas fichas usa o catálogo local. A interface de mídias externas e o vínculo com o fornecedor ainda serão implementados. O endpoint exige login. As mídias retornadas pelo fornecedor não são necessariamente GIFs.
 

@@ -17,11 +17,11 @@ Premissas para a primeira versão:
 - Uma sessão em andamento por usuário; retomada em outro dispositivo com internet.
 - Séries de aquecimento e trabalho; exercícios por repetição ou tempo, incluindo prancha.
 - Carga externa, peso corporal e assistência, sem misturar essas medidas nas estatísticas.
-- Exercícios personalizados, offline, treinadores, compartilhamento e medidas corporais são extensões futuras, não requisitos do README atual.
+- Exercícios personalizados, offline e medidas corporais são extensões futuras. O relacionamento entre coach e aluno está planejado separadamente em [coach e aluno](coachStudentPlan.md).
 
 ## Visão das tabelas
 
-São **12 tabelas de domínio**, além das tabelas do Neon Auth.
+São **20 tabelas de domínio atualmente aplicadas**, além das tabelas do Neon Auth. O módulo de [coach e aluno](coachStudentPlan.md) está aplicado; [agenda semanal e calendário](weeklyScheduleCalendarPlan.md) permanece planejado.
 
 | Tabela | Responsabilidade |
 | --- | --- |

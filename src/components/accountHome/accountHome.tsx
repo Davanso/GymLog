@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { auth } from '../../services/auth';
+import { CoachPanel } from '../coachPanel/coachPanel';
 import { LoadingState } from '../loadingState/loadingState';
 import { Workouts } from '../workouts/workouts';
 import './accountHome.css';
@@ -26,6 +27,9 @@ export function AccountHome() {
   const [busy, setBusy] = useState(false);
   const [workoutsReady, setWorkoutsReady] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(storedSidebarPreference);
+  const [section, setSection] = useState<'workouts' | 'coach'>(() =>
+    new URLSearchParams(window.location.search).has('convite') ? 'coach' : 'workouts',
+  );
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
@@ -84,6 +88,11 @@ export function AccountHome() {
       return !collapsed;
     });
   }
+  function changeSection(next: 'workouts' | 'coach') {
+    const change = () => setSection(next);
+    if (!navigationGuard.current) return change();
+    navigationGuard.current(change);
+  }
   const appLoading = (!profile && !error) || (Boolean(profile) && !workoutsReady);
   return (
     <>
@@ -117,18 +126,30 @@ export function AccountHome() {
             </span>
           </a>
           <nav aria-label="Menu principal">
-            <a
-              className="sidebar-tab sidebar-tab--active"
-              href="/app"
+            <button
+              type="button"
+              className={`sidebar-tab${section === 'workouts' ? ' sidebar-tab--active' : ''}`}
               aria-label="Minhas fichas"
-              aria-current="page"
-              onClick={(event) => navigate(event, '/app')}
+              aria-current={section === 'workouts' ? 'page' : undefined}
+              onClick={() => changeSection('workouts')}
             >
               <span className="sidebar-icon" aria-hidden="true">
                 ▤
               </span>
               <span className="sidebar-label">Minhas fichas</span>
-            </a>
+            </button>
+            <button
+              type="button"
+              className={`sidebar-tab${section === 'coach' ? ' sidebar-tab--active' : ''}`}
+              aria-label="Coach e alunos"
+              aria-current={section === 'coach' ? 'page' : undefined}
+              onClick={() => changeSection('coach')}
+            >
+              <span className="sidebar-icon" aria-hidden="true">
+                ◉
+              </span>
+              <span className="sidebar-label">Coach e alunos</span>
+            </button>
           </nav>
           <button
             className="secondary-button"
@@ -154,13 +175,18 @@ export function AccountHome() {
             </div>
           )}
           {profile && (
-            <Workouts
-              userId={profile.id}
-              onInitialLoadComplete={handleWorkoutsReady}
-              registerNavigationGuard={(guard) => {
-                navigationGuard.current = guard;
-              }}
-            />
+            <>
+              <div hidden={section !== 'workouts'}>
+                <Workouts
+                  userId={profile.id}
+                  onInitialLoadComplete={handleWorkoutsReady}
+                  registerNavigationGuard={(guard) => {
+                    navigationGuard.current = guard;
+                  }}
+                />
+              </div>
+              {section === 'coach' && <CoachPanel />}
+            </>
           )}
         </section>
       </main>

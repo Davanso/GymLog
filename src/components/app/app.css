@@ -278,6 +278,9 @@ button:disabled {
   margin-top: 48px;
 }
 .sidebar-tab {
+  width: 100%;
+  border: 0;
+  background: transparent;
   display: flex;
   align-items: center;
   gap: 12px;

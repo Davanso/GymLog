@@ -5,6 +5,7 @@ import authHandler from '../../api/auth.js';
 import meHandler from '../../api/me.js';
 import workoutsHandler from '../../api/workouts.js';
 import catalogHandler from '../../api/catalog.js';
+import coachHandler from '../../api/coach.js';
 import { requireUser } from '../../server/auth.js';
 import { json, httpError, writeWebResponse } from '../../server/http.js';
 
@@ -27,6 +28,7 @@ test('auth proxy and protected routes enforce origin, method and verified sessio
     if (req.url === '/api/me') return meHandler(req, res);
     if (req.url === '/api/workouts') return workoutsHandler(req, res);
     if (req.url === '/api/catalog') return catalogHandler(req, res);
+    if (req.url === '/api/coach') return coachHandler(req, res);
     if (req.url === '/cookies')
       return writeWebResponse(
         res,
@@ -78,7 +80,7 @@ test('auth proxy and protected routes enforce origin, method and verified sessio
     );
   };
   try {
-    for (const path of ['/api/me', '/api/catalog', '/api/workouts']) {
+    for (const path of ['/api/me', '/api/catalog', '/api/workouts', '/api/coach']) {
       const response = await originalFetch(origin + path);
       assert.equal(response.status, 401, path);
       assert.equal(response.headers.get('cache-control'), 'no-store');
