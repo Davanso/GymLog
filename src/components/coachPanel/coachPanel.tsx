@@ -9,21 +9,10 @@ export function CoachPanel() {
   const [data, setData] = useState<CoachDashboard | null>(null);
   const [history, setHistory] = useState<StudentHistory | null>(null);
   const [inviteUrl, setInviteUrl] = useState('');
-  const [busy, setBusy] = useState(true);
+  const [pendingOperation, setPendingOperation] = useState<string | null>('initial-load');
   const [error, setError] = useState('');
   const { requestConfirmation, confirmation } = useConfirmation();
   const inviteToken = new URLSearchParams(window.location.search).get('convite');
-  async function load() {
-    setBusy(true);
-    setError('');
-    try {
-      setData(await coachApi<CoachDashboard>());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Não foi possível carregar seus vínculos.');
-    } finally {
-      setBusy(false);
-    }
-  }
   useEffect(() => {
     let active = true;
     coachApi<CoachDashboard>()
@@ -37,21 +26,23 @@ export function CoachPanel() {
           );
       })
       .finally(() => {
-        if (active) setBusy(false);
+        if (active) setPendingOperation(null);
       });
     return () => {
       active = false;
     };
   }, []);
-  async function action(job: () => Promise<unknown>) {
-    setBusy(true);
+  async function action(operation: string, job: () => Promise<unknown>) {
+    if (pendingOperation) return;
+    setPendingOperation(operation);
     setError('');
     try {
       await job();
-      await load();
+      setData(await coachApi<CoachDashboard>());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível concluir esta ação.');
-      setBusy(false);
+    } finally {
+      setPendingOperation(null);
     }
   }
   function endRelationship(id: string, name: string) {
@@ -63,7 +54,7 @@ export function CoachPanel() {
         confirmLabel: 'Encerrar vínculo',
         cancelLabel: 'Manter vínculo',
       },
-      () => void action(() => coachApi({ action: 'end-relationship', id })),
+      () => void action(`relationship-${id}`, () => coachApi({ action: 'end-relationship', id })),
     );
   }
   async function assign(event: FormEvent<HTMLFormElement>) {
@@ -73,7 +64,7 @@ export function CoachPanel() {
     const template = data?.templates.find((item) => item.id === templateId);
     if (!template) return;
     const selectedStudents = values.getAll('studentId').map(String);
-    await action(() =>
+    await action('assign', () =>
       coachApi({
         action: 'assign',
         templateId,
@@ -91,19 +82,22 @@ export function CoachPanel() {
     );
   }
   async function showHistory(studentId: string) {
-    setBusy(true);
+    if (pendingOperation) return;
+    setPendingOperation(`history-${studentId}`);
     setError('');
     try {
       setHistory(await coachApi<StudentHistory>(undefined, studentId));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível carregar o histórico.');
     } finally {
-      setBusy(false);
+      setPendingOperation(null);
     }
   }
   return (
     <section className="coach-panel">
-      {busy && <LoadingState label="Atualizando vínculos…" />}
+      {pendingOperation === 'initial-load' && !data && (
+        <LoadingState label="Carregando vínculos…" />
+      )}
       <div className="workout-heading">
         <div>
           <p className="eyebrow">COACH E ALUNOS</p>
@@ -114,10 +108,10 @@ export function CoachPanel() {
           <button
             type="button"
             className="primary-button"
-            disabled={busy}
-            onClick={() => void action(() => coachApi({ action: 'enable' }))}
+            disabled={Boolean(pendingOperation)}
+            onClick={() => void action('enable', () => coachApi({ action: 'enable' }))}
           >
-            Habilitar perfil de coach
+            {pendingOperation === 'enable' ? 'Habilitando…' : 'Habilitar perfil de coach'}
           </button>
         )}
       </div>
@@ -131,15 +125,15 @@ export function CoachPanel() {
           <button
             type="button"
             className="primary-button"
-            disabled={busy}
+            disabled={Boolean(pendingOperation)}
             onClick={() =>
-              void action(async () => {
+              void action('accept-invite', async () => {
                 await coachApi({ action: 'accept-invite', token: inviteToken });
                 window.history.replaceState(null, '', '/app');
               })
             }
           >
-            Aceitar convite
+            {pendingOperation === 'accept-invite' ? 'Aceitando…' : 'Aceitar convite'}
           </button>
         </article>
       )}
@@ -153,17 +147,20 @@ export function CoachPanel() {
             <button
               type="button"
               className="secondary-button"
-              disabled={busy}
+              disabled={Boolean(pendingOperation)}
               onClick={() =>
-                void action(async () => {
+                void action('create-invite', async () => {
                   const result = await coachApi<{ url: string }>({ action: 'create-invite' });
                   setInviteUrl(result.url);
                 })
               }
             >
-              Gerar link
+              {pendingOperation === 'create-invite' ? 'Gerando…' : 'Gerar link'}
             </button>
           </div>
+          {pendingOperation === 'create-invite' && (
+            <LoadingState label="Gerando seu link de convite…" delayMs={0} compact />
+          )}
           {inviteUrl && (
             <div className="invite-link">
               <input readOnly value={inviteUrl} aria-label="Link do convite" />
@@ -188,7 +185,9 @@ export function CoachPanel() {
                     type="button"
                     className="text-button danger"
                     onClick={() =>
-                      void action(() => coachApi({ action: 'revoke-invite', id: invite.id }))
+                      void action(`revoke-${invite.id}`, () =>
+                        coachApi({ action: 'revoke-invite', id: invite.id }),
+                      )
                     }
                   >
                     Revogar
@@ -197,24 +196,30 @@ export function CoachPanel() {
               ))}
             </ul>
           )}
-          <button
-            type="button"
-            className="text-button danger disable-coach"
-            onClick={() =>
-              requestConfirmation(
-                {
-                  title: 'Desabilitar o perfil de coach?',
-                  description:
-                    'Convites pendentes serão revogados e o acesso aos históricos ficará suspenso. Seus registros serão preservados.',
-                  confirmLabel: 'Desabilitar perfil',
-                  cancelLabel: 'Manter perfil',
-                },
-                () => void action(() => coachApi({ action: 'disable' })),
-              )
-            }
-          >
-            Desabilitar perfil de coach
-          </button>
+          <div className="disable-coach-action">
+            <button
+              type="button"
+              className="text-button danger disable-coach"
+              disabled={Boolean(pendingOperation)}
+              onClick={() =>
+                requestConfirmation(
+                  {
+                    title: 'Desabilitar o perfil de coach?',
+                    description:
+                      'Convites pendentes serão revogados e o acesso aos históricos ficará suspenso. Seus registros serão preservados.',
+                    confirmLabel: 'Desabilitar perfil',
+                    cancelLabel: 'Manter perfil',
+                  },
+                  () => void action('disable', () => coachApi({ action: 'disable' })),
+                )
+              }
+            >
+              {pendingOperation === 'disable' ? 'Desabilitando…' : 'Desabilitar perfil de coach'}
+            </button>
+            {pendingOperation === 'disable' && (
+              <LoadingState label="Desabilitando perfil de coach…" delayMs={0} compact />
+            )}
+          </div>
         </article>
       )}
       <div className="coach-columns">
@@ -251,8 +256,11 @@ export function CoachPanel() {
                       type="button"
                       className="text-button"
                       onClick={() => void showHistory(student.profileId)}
+                      disabled={Boolean(pendingOperation)}
                     >
-                      Histórico
+                      {pendingOperation === `history-${student.profileId}`
+                        ? 'Carregando…'
+                        : 'Histórico'}
                     </button>
                     <button
                       type="button"
@@ -306,8 +314,8 @@ export function CoachPanel() {
             Instruções
             <textarea name="instructions" maxLength={2000} rows={3} />
           </label>
-          <button type="submit" className="primary-button" disabled={busy}>
-            Atribuir ficha
+          <button type="submit" className="primary-button" disabled={Boolean(pendingOperation)}>
+            {pendingOperation === 'assign' ? 'Atribuindo…' : 'Atribuir ficha'}
           </button>
         </form>
       )}

@@ -56,6 +56,12 @@
 .disable-coach {
   margin-top: 18px;
 }
+.disable-coach-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 .assignment-form {
   display: grid;
   gap: 18px;

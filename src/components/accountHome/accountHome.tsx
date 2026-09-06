@@ -15,6 +15,7 @@ function storedSidebarPreference() {
 }
 export function AccountHome() {
   const navigationGuard = useRef<((action: () => void) => void) | null>(null);
+  const touchStartX = useRef<number | null>(null);
   const [profile, setProfile] = useState<Profile | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem('gymlog:profile') || 'null');
@@ -27,6 +28,7 @@ export function AccountHome() {
   const [busy, setBusy] = useState(false);
   const [workoutsReady, setWorkoutsReady] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(storedSidebarPreference);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [section, setSection] = useState<'workouts' | 'coach'>(() =>
     new URLSearchParams(window.location.search).has('convite') ? 'coach' : 'workouts',
   );
@@ -89,22 +91,43 @@ export function AccountHome() {
     });
   }
   function changeSection(next: 'workouts' | 'coach') {
-    const change = () => setSection(next);
+    const change = () => {
+      setSection(next);
+      setMobileMenuOpen(false);
+    };
     if (!navigationGuard.current) return change();
     navigationGuard.current(change);
+  }
+  function finishMenuSwipe(clientX: number) {
+    if (touchStartX.current === null) return;
+    const distance = clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(distance) < 45) return;
+    setMobileMenuOpen(distance > 0);
   }
   const appLoading = (!profile && !error) || (Boolean(profile) && !workoutsReady);
   return (
     <>
       {appLoading && (
         <main className="loading-page loading-page--global">
-          <LoadingState label="Preparando seu GymLog…" delayMs={0} />
+          <LoadingState label="Preparando seu GymLog…" delayMs={0} fullScreen />
         </main>
       )}
       <main
         className={`account-shell${appLoading ? ' account-shell--loading' : ''}${sidebarCollapsed ? ' account-shell--sidebar-collapsed' : ''}`}
       >
-        <aside className="app-sidebar" data-collapsed={sidebarCollapsed || undefined}>
+        <aside
+          className="app-sidebar"
+          data-collapsed={sidebarCollapsed || undefined}
+          data-mobile-open={mobileMenuOpen || undefined}
+          onTouchStart={(event) => {
+            touchStartX.current = event.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(event) => finishMenuSwipe(event.changedTouches[0]?.clientX ?? 0)}
+          onTouchCancel={() => {
+            touchStartX.current = null;
+          }}
+        >
           <button
             type="button"
             className="sidebar-toggle"
@@ -125,6 +148,15 @@ export function AccountHome() {
               GYM<strong>LOG</strong>
             </span>
           </a>
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-label={mobileMenuOpen ? 'Recolher menu' : 'Expandir menu'}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <span aria-hidden="true">{mobileMenuOpen ? '×' : '☰'}</span>
+          </button>
           <nav aria-label="Menu principal">
             <button
               type="button"
@@ -163,7 +195,7 @@ export function AccountHome() {
               ↪
             </span>
             <span className="sidebar-label">{busy ? 'Saindo…' : 'Sair da conta'}</span>
-            {busy && <LoadingState label="Saindo…" />}
+            {busy && <LoadingState label="Saindo…" compact />}
           </button>
         </aside>
         <section className="account-content">

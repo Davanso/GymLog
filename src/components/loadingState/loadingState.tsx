@@ -2,9 +2,19 @@ import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import './loadingState.css';
 
-type LoadingStateProps = { label?: string; delayMs?: number };
+type LoadingStateProps = {
+  label?: string;
+  delayMs?: number;
+  fullScreen?: boolean;
+  compact?: boolean;
+};
 
-export function LoadingState({ label = 'Abrindo seu GymLog…', delayMs = 250 }: LoadingStateProps) {
+export function LoadingState({
+  label = 'Abrindo seu GymLog…',
+  delayMs = 250,
+  fullScreen = false,
+  compact = false,
+}: LoadingStateProps) {
   const [visible, setVisible] = useState(delayMs === 0);
   useEffect(() => {
     if (delayMs === 0) return;
@@ -13,7 +23,11 @@ export function LoadingState({ label = 'Abrindo seu GymLog…', delayMs = 250 }:
   }, [delayMs]);
   if (!visible) return null;
   return createPortal(
-    <span className="gym-loading" role="status" aria-live="polite">
+    <span
+      className={`gym-loading${fullScreen ? ' gym-loading--fullscreen' : ''}${compact ? ' gym-loading--compact' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
       <span className="gym-loading__stage" aria-hidden="true">
         <span className="gym-loading__shadow" />
         <span className="gym-loading__jump">

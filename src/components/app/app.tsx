@@ -13,7 +13,7 @@ export default function App() {
   if (session.isPending)
     return (
       <main className="loading-page">
-        <LoadingState label="Preparando seu GymLog…" delayMs={0} />
+        <LoadingState label="Preparando seu GymLog…" delayMs={0} fullScreen />
       </main>
     );
   if (!session.data) return <AuthPage serviceError={Boolean(session.error)} />;
