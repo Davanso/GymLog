@@ -5,7 +5,7 @@ import { loadLabel } from '../../utils/workoutLabels';
 import { ExercisePreview } from '../exercisePreview/exercisePreview';
 import { RestTimer } from '../restTimer/restTimer';
 import { formatRepRange } from '../templateEditor/repRange';
-import { readClock, startClock, type RestClock } from './restClock';
+import { hasActiveRest, readClock, startClock, type RestClock } from './restClock';
 import './sessionRunner.css';
 
 type SetInput = { setId: string; status: 'completed' | 'skipped'; amount?: number; load?: number };
@@ -157,7 +157,8 @@ export function SessionRunner({
       );
       return;
     }
-    if (!clock) {
+    if (!hasActiveRest(clock)) {
+      setClock(null);
       void saveSet(input, set);
       return;
     }

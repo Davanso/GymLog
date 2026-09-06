@@ -49,7 +49,8 @@ export function RestTimer({
       oscillator.start();
       oscillator.stop(context.currentTime + 0.5);
     }
-  }, [remaining, clock, sound]);
+    onChange(null);
+  }, [remaining, clock, sound, onChange]);
   useEffect(
     () => () => {
       void audio.current?.close();
@@ -93,12 +94,11 @@ export function RestTimer({
         {String(seconds % 60).padStart(2, '0')}
       </div>
       <div className="workout-actions">
-        {clock && (
+        {clock && remaining > 0 && (
           <>
             <button
               type="button"
               className="secondary-button"
-              disabled={remaining === 0}
               onClick={() => {
                 setNow(Date.now());
                 onChange(clock.deadline === null ? resumeClock(clock) : pauseClock(clock));
@@ -117,7 +117,7 @@ export function RestTimer({
               +30 s
             </button>
             <button type="button" className="text-button" onClick={() => onChange(null)}>
-              {remaining === 0 ? 'Fechar' : 'Pular descanso'}
+              Pular descanso
             </button>
           </>
         )}

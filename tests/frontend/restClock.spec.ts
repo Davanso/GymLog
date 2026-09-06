@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   extendClock,
+  hasActiveRest,
   pauseClock,
   readClock,
   remainingMs,
@@ -13,6 +14,9 @@ test('rest clock uses elapsed time and resumes without drift', () => {
   const clock = { setId: 'set', remaining: 60000, deadline: 61000 };
   assert.equal(remainingMs(clock, 11000), 50000);
   assert.equal(remainingMs(clock, 120000), 0);
+  assert.equal(hasActiveRest(clock, 11000), true);
+  assert.equal(hasActiveRest(clock, 120000), false);
+  assert.equal(hasActiveRest(null, 120000), false);
   const paused = pauseClock(clock, 11000);
   assert.equal(remainingMs(paused, 999999), 50000);
   assert.equal(resumeClock(paused, 100000).deadline, 150000);

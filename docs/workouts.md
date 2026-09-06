@@ -19,7 +19,7 @@ Excluir uma ficha a arquiva: ela sai da lista, mas as sessões e referências hi
 ## Timer
 
 - Início automático após salvar uma série concluída, se ainda houver séries pendentes e o descanso for maior que zero.
-- Pausar, retomar, adicionar 30 segundos ou pular o descanso. Pular descanso não pula uma série.
+- Pausar, retomar, adicionar 30 segundos ou pular o descanso. Pular descanso não pula uma série. Ao chegar a zero, o cronômetro encerra automaticamente e não exige uma ação para fechar.
 - Aviso visual ao terminar e som opcional, habilitado pelo próprio usuário.
 - Horário absoluto de término, em vez de descontar um segundo a cada callback: atrasos do navegador não acumulam erro de contagem.
 - Persistência local por usuário e sessão, incluindo pausa. Ao voltar à sessão no mesmo navegador, a contagem usa o tempo realmente decorrido. O timer não é sincronizado entre dispositivos ou abas; os registros de séries são sincronizados pelo banco.
