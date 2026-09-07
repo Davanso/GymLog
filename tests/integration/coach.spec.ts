@@ -110,6 +110,8 @@ test('database: coach invitation, immutable assignment, student execution and sh
     await db.query("SELECT set_config('gymlog.user_id',$1,true)", [coachId]);
     const history = await coach.studentHistory(studentId);
     assert.equal(history.sessions[0].exercises[0].sets[0].actual_load_kg, 22);
+    assert.equal(history.assignments[0].title, 'Semana inicial');
+    assert.equal(history.assignments[0].status, 'completed');
     await coach.execute({ action: 'disable' });
     await assert.rejects(
       () => coach.studentHistory(studentId),

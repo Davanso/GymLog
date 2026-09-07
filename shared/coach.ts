@@ -19,4 +19,16 @@ export type CoachDashboard = {
   invites: CoachInvite[];
   templates: Pick<Template, 'id' | 'name' | 'version'>[];
 };
-export type StudentHistory = { student: { id: string; name: string }; sessions: Session[] };
+export type StudentAssignment = {
+  id: string;
+  title: string;
+  templateName: string;
+  status: 'assigned' | 'started' | 'completed' | 'withdrawn';
+  assignedAt: string;
+  instructions: string;
+};
+export type StudentHistory = {
+  student: { id: string; name: string };
+  sessions: Session[];
+  assignments: StudentAssignment[];
+};

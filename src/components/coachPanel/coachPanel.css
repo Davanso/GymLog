@@ -53,6 +53,12 @@
   flex: 1;
   min-width: 0;
 }
+.copy-feedback {
+  margin: 10px 0 0;
+  color: #1a644c;
+  font-size: 13px;
+  font-weight: 650;
+}
 .disable-coach {
   margin-top: 18px;
 }
@@ -65,6 +71,17 @@
 .assignment-form {
   display: grid;
   gap: 18px;
+}
+.assignment-intro {
+  display: grid;
+  gap: 12px;
+}
+.assignment-intro h3,
+.assignment-intro .muted {
+  margin: 0;
+}
+.assignment-intro .primary-button {
+  justify-self: start;
 }
 .assignment-form > label {
   display: grid;
@@ -97,11 +114,13 @@
   width: auto;
 }
 .student-recipient {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.35fr) 1fr;
+  align-items: center;
+  margin-top: 8px;
+}
+.student-actions {
+  display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
 }
 .student-history details {
   padding: 14px 0;
@@ -117,6 +136,75 @@
   border-radius: 8px;
   background: #f5f8fc;
 }
+.assignment-history {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.assignment-history .eyebrow {
+  margin-bottom: 8px;
+}
+.assignment-history h4 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+.assignment-history ul {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.assignment-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbfd;
+}
+.assignment-history li > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.assignment-history li > div:first-child span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.assignment-history li > p {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.assignment-history__meta {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.assignment-status {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #48586c;
+  font-weight: 700;
+}
+.assignment-status--started {
+  background: #eaf1ff;
+  color: #164fd1;
+}
+.assignment-status--completed {
+  background: #eaf5f1;
+  color: #1a644c;
+}
+.assignment-status--withdrawn {
+  background: #fff0ee;
+  color: #a32a23;
+}
 @media (max-width: 760px) {
   .coach-columns {
     grid-template-columns: 1fr;
@@ -128,5 +216,16 @@
   }
   .student-recipient {
     grid-template-columns: 1fr;
+  }
+  .student-actions {
+    gap: 10px;
+  }
+  .assignment-history li {
+    grid-template-columns: 1fr;
+  }
+  .assignment-history__meta {
+    justify-items: start;
+    grid-auto-flow: column;
+    justify-content: start;
   }
 }
