@@ -3,6 +3,7 @@
     "server/auth.ts",
     "server/catalogHandler.ts",
     "server/catalogImport.ts",
+    "server/coachInput.ts",
     "server/exerciseProvider.ts",
     "server/http.ts",
     "server/muscleGroupMap.ts",
@@ -11,6 +12,7 @@
     "src/components/templateEditor/exerciseSearch.ts",
     "src/components/templateEditor/repRange.ts",
     "src/services/workoutApi.ts",
+    "src/services/coachApi.ts",
     "src/utils/workoutLabels.ts"
   ],
   "exclude": ["tests/**", "coverage/**"],

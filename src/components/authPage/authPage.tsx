@@ -238,7 +238,7 @@ export function AuthPage({ serviceError = false }: { serviceError?: boolean }) {
                 {busy ? (
                   <>
                     Aguarde…
-                    <LoadingState label="Aguarde…" />
+                    <LoadingState label="Aguarde…" compact />
                   </>
                 ) : (
                   labels[mode]

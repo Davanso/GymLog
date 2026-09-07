@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Session, Template, TemplateDraft, WorkoutDashboard } from '../../../shared/workouts';
+import type {
+  ReceivedWorkout,
+  Session,
+  Template,
+  TemplateDraft,
+  WorkoutDashboard,
+} from '../../../shared/workouts';
 import { workoutApi } from '../../services/workoutApi';
 import { SessionRunner } from '../sessionRunner/sessionRunner';
 import { TemplateEditor } from '../templateEditor/templateEditor';
@@ -16,7 +22,7 @@ export function Workouts({
   registerNavigationGuard: (guard: ((action: () => void) => void) | null) => void;
 }) {
   const { requestConfirmation, confirmation } = useConfirmation();
-  const cacheKey = `gymlog:dashboard:v5:${userId}`;
+  const cacheKey = `gymlog:dashboard:v6:${userId}`;
   const [data, setData] = useState<WorkoutDashboard | null>(() => {
     try {
       return JSON.parse(sessionStorage.getItem(cacheKey) || 'null');
@@ -37,7 +43,7 @@ export function Workouts({
     const controller = new AbortController();
     workoutApi<WorkoutDashboard>(undefined, controller.signal)
       .then((result) => {
-        setData(result);
+        setData({ ...result, received: result.received ?? [] });
         setError('');
       })
       .catch((e) => {
@@ -107,6 +113,21 @@ export function Workouts({
         action: 'start',
         ...starting.current,
         version: template.version,
+      });
+      setSession(result);
+      history.current.set(result.id, result);
+      setData((old) => (old ? { ...old, active: result } : old));
+      starting.current = null;
+    });
+  }
+  function startReceived(received: ReceivedWorkout) {
+    if (starting.current?.templateId !== received.recipientId)
+      starting.current = { id: crypto.randomUUID(), templateId: received.recipientId };
+    void perform(async () => {
+      const result = await workoutApi<Session>({
+        action: 'start-assigned',
+        id: starting.current?.id,
+        recipientId: received.recipientId,
       });
       setSession(result);
       history.current.set(result.id, result);
@@ -318,6 +339,47 @@ export function Workouts({
                   </article>
                 ))}
               </div>
+              {!!data.received?.length && (
+                <section className="received-workouts">
+                  <div className="section-heading">
+                    <div>
+                      <p className="eyebrow">FICHAS RECEBIDAS</p>
+                      <h3>Treinos dos seus coaches</h3>
+                    </div>
+                    <span>{data.received.length}</span>
+                  </div>
+                  <div className="template-grid">
+                    {data.received.map((received) => (
+                      <article className="template-card received-card" key={received.recipientId}>
+                        <p className="eyebrow">COACH {received.coachName.toUpperCase()}</p>
+                        <h3>{received.name}</h3>
+                        {received.notes && <p className="muted">{received.notes}</p>}
+                        {received.instructions && (
+                          <p className="exercise-guidance">{received.instructions}</p>
+                        )}
+                        <ol>
+                          {received.items.map((item) => (
+                            <li key={item.exerciseId}>
+                              {item.name} <span>{item.sets} séries</span>
+                            </li>
+                          ))}
+                        </ol>
+                        <div className="workout-actions">
+                          <button
+                            type="button"
+                            className="primary-button"
+                            disabled={!!data.active}
+                            onClick={() => startReceived(received)}
+                          >
+                            Iniciar treino
+                          </button>
+                          <span className="read-only-badge">Somente leitura</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
               {!!data.recent.length && (
                 <section className="recent-workouts">
                   <h3>Treinos recentes</h3>

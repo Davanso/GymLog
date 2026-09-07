@@ -27,33 +27,32 @@ export function authConfig() {
   return { baseUrl: url.href.replace(/\/$/, ''), cookieSecret, sessionDataTtl: 60 };
 }
 
+export function authContext(request: IncomingMessage, response: ServerResponse) {
+  return {
+    getCookies: () => extractNeonAuthCookies(request.headers.cookie || ''),
+    setCookie: (name: string, value: string, options: Parameters<typeof serializeSetCookie>[0]) => {
+      const current = response.getHeader('Set-Cookie');
+      const cookies =
+        typeof current === 'string' ? [current] : Array.isArray(current) ? current.map(String) : [];
+      response.setHeader('Set-Cookie', [
+        ...cookies,
+        serializeSetCookie({ ...options, name, value }),
+      ]);
+    },
+    getHeader: (name: string) => {
+      if (!['origin', 'cookie', 'user-agent'].includes(name.toLowerCase())) return null;
+      const value = request.headers[name.toLowerCase()];
+      return typeof value === 'string' ? value : null;
+    },
+    getOrigin: appOrigin,
+    getFramework: () => 'vercel-node' as const,
+  };
+}
+
 export async function requireUser(request: IncomingMessage, response: ServerResponse) {
   const auth = createAuthServer({
     ...authConfig(),
-    context: () => ({
-      getCookies: () => extractNeonAuthCookies(request.headers.cookie || ''),
-      setCookie: (name, value, options) => {
-        const current = response.getHeader('Set-Cookie');
-        const cookies =
-          typeof current === 'string'
-            ? [current]
-            : Array.isArray(current)
-              ? current.map(String)
-              : [];
-        response.setHeader('Set-Cookie', [
-          ...cookies,
-          serializeSetCookie({ name, value, ...options }),
-        ]);
-      },
-      getHeader: (name) =>
-        ['origin', 'cookie', 'user-agent'].includes(name.toLowerCase())
-          ? typeof request.headers[name.toLowerCase()] === 'string'
-            ? (request.headers[name.toLowerCase()] as string)
-            : null
-          : null,
-      getOrigin: appOrigin,
-      getFramework: () => 'vercel-node',
-    }),
+    context: () => authContext(request, response),
   });
   const { data, error } = await auth.getSession({ query: { disableCookieCache: 'true' } });
   if (error) throw new HttpError(503, 'Não foi possível validar sua sessão.');

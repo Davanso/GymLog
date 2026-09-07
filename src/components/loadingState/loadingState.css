@@ -1,9 +1,5 @@
 .gym-loading {
   --loading-cycle: 1.8s;
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: #f1f5f9;
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -12,6 +8,34 @@
   gap: 20px;
   color: var(--blue);
   text-align: center;
+}
+.gym-loading--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #f1f5f9;
+}
+.gym-loading--compact {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  text-align: left;
+}
+.gym-loading--compact .gym-loading__stage {
+  width: 40px;
+  height: 36px;
+}
+.gym-loading--compact .gym-loading__jump {
+  bottom: 4px;
+  left: 7px;
+  width: 26px;
+  height: 16px;
+}
+.gym-loading--compact .gym-loading__shadow {
+  left: 9px;
+  width: 22px;
+  height: 3px;
 }
 .gym-loading__stage {
   position: relative;

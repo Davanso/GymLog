@@ -34,3 +34,22 @@ test('workout service preserves API errors and session query parameters', async 
   );
   assert.equal(requestedUrl, '/api/workouts?session=session%20id');
 });
+
+test('workout service redirects expired sessions and provides a fallback error', async () => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  let destination = '';
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { location: { replace: (url: string) => (destination = url) } },
+  });
+  try {
+    globalThis.fetch = async () => Response.json({}, { status: 401 });
+    await assert.rejects(() => workoutApi(), /Sua sessão expirou/);
+    assert.equal(destination, '/entrar');
+    globalThis.fetch = async () => Response.json({}, { status: 500 });
+    await assert.rejects(() => workoutApi(), /Não foi possível salvar/);
+  } finally {
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+  }
+});

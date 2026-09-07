@@ -274,10 +274,16 @@ button:disabled {
   font-size: 22px;
   line-height: 1;
 }
+.mobile-menu-toggle {
+  display: none;
+}
 .app-sidebar nav {
   margin-top: 48px;
 }
 .sidebar-tab {
+  width: 100%;
+  border: 0;
+  background: transparent;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -422,21 +428,48 @@ button:disabled {
     padding: 16px;
   }
   .app-sidebar {
-    position: static;
+    position: sticky;
+    top: 12px;
+    z-index: 20;
     height: auto;
     padding: 16px;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     border-radius: 16px;
   }
+  .mobile-menu-toggle {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid #ffffff2b;
+    border-radius: 10px;
+    background: #ffffff12;
+    color: white;
+    font-size: 21px;
+  }
   .app-sidebar nav {
-    margin: 0;
-    margin-left: auto;
+    display: none;
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid #ffffff1f;
+  }
+  .app-sidebar[data-mobile-open] nav {
+    display: grid;
+    gap: 6px;
   }
   .app-sidebar > .secondary-button {
+    display: none;
+    grid-column: 1 / -1;
     margin: 0;
-    padding: 10px;
+    padding: 12px 14px;
+    justify-content: flex-start;
+  }
+  .app-sidebar[data-mobile-open] > .secondary-button {
+    display: flex;
   }
   .app-sidebar > .secondary-button .sidebar-label {
     font-size: 0;
@@ -447,6 +480,7 @@ button:disabled {
   }
   .sidebar-tab {
     min-height: 42px;
+    justify-content: flex-start;
   }
   .account-content {
     padding: 34px 4px 48px;

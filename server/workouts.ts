@@ -82,11 +82,29 @@ export function workoutStore(db: PoolClient, userId: string) {
       "SELECT id,name,status,started_at,ended_at FROM workout_sessions WHERE user_id=$1 AND status <> 'in_progress' ORDER BY started_at DESC LIMIT 20",
       [userId],
     );
+    const received = await db.query(
+      `SELECT r.id "recipientId",v.id "versionId",v.name,coalesce(v.notes,'') notes,
+        coalesce(nullif(r.instructions,''),a.instructions,'') instructions,p.display_name "coachName",
+        r.assigned_at "assignedAt",r.status,
+        coalesce((SELECT json_agg(json_build_object('exerciseId',e.exercise_id,'name',e.exercise_name_snapshot,
+          'sets',(SELECT count(*)::int FROM workout_assignment_sets s WHERE s.assignment_exercise_id=e.id),
+          'reps',(SELECT min(s.target_reps_min) FROM workout_assignment_sets s WHERE s.assignment_exercise_id=e.id),
+          'repsMax',(SELECT min(s.target_reps_max) FROM workout_assignment_sets s WHERE s.assignment_exercise_id=e.id),
+          'seconds',(SELECT min(s.target_duration_seconds) FROM workout_assignment_sets s WHERE s.assignment_exercise_id=e.id),
+          'load',(SELECT min(s.target_load_kg)::float8 FROM workout_assignment_sets s WHERE s.assignment_exercise_id=e.id),
+          'notes',coalesce(e.notes,'')) ORDER BY e.position)
+          FROM workout_assignment_exercises e WHERE e.assignment_version_id=v.id),'[]'::json) items
+       FROM workout_assignment_recipients r JOIN workout_assignments a ON a.id=r.assignment_id
+       JOIN workout_assignment_versions v ON v.id=a.assignment_version_id JOIN profiles p ON p.id=a.coach_id
+       WHERE r.student_id=$1 AND r.status<>'withdrawn' ORDER BY r.assigned_at DESC`,
+      [userId],
+    );
     return {
       exercises: exercises.rows as Exercise[],
       templates: await templates(),
       active: active.rows[0] ? await session(active.rows[0].id) : null,
       recent: recent.rows,
+      received: received.rows,
     };
   }
   async function lockTemplate(id: string, version: number) {
@@ -220,6 +238,63 @@ export function workoutStore(db: PoolClient, userId: string) {
     );
     return session(id);
   }
+  async function startAssigned(id: string, recipientId: string) {
+    await db.query('SELECT id FROM profiles WHERE id=$1 FOR UPDATE', [userId]);
+    const existing = await db.query(
+      'SELECT id,assignment_recipient_id FROM workout_sessions WHERE id=$1 AND user_id=$2',
+      [id, userId],
+    );
+    const started = existing.rows[0];
+    if (started?.assignment_recipient_id === recipientId) return session(id);
+    if (started) throw new HttpError(409, 'Identificador já utilizado.');
+    const active = await db.query(
+      "SELECT id FROM workout_sessions WHERE user_id=$1 AND status='in_progress'",
+      [userId],
+    );
+    if (active.rows[0])
+      throw new HttpError(
+        409,
+        'Você já tem um treino em andamento. Retome ou encerre esse treino.',
+      );
+    const assigned = await db.query(
+      `SELECT r.id,v.id version_id,v.name,v.notes FROM workout_assignment_recipients r
+       JOIN workout_assignments a ON a.id=r.assignment_id JOIN workout_assignment_versions v ON v.id=a.assignment_version_id
+       WHERE r.id=$1 AND r.student_id=$2 AND r.status<>'withdrawn' FOR UPDATE OF r`,
+      [recipientId, userId],
+    );
+    if (!assigned.rows[0]) throw new HttpError(404, 'Ficha recebida não encontrada.');
+    await db.query(
+      `INSERT INTO workout_sessions(id,user_id,name,notes,assignment_recipient_id,assignment_version_id)
+       VALUES($1,$2,$3,$4,$5,$6)`,
+      [
+        id,
+        userId,
+        assigned.rows[0].name,
+        assigned.rows[0].notes,
+        recipientId,
+        assigned.rows[0].version_id,
+      ],
+    );
+    await db.query(
+      `INSERT INTO session_exercises(id,user_id,session_id,exercise_id,position,notes,exercise_name_snapshot,tracking_mode_snapshot,load_mode_snapshot,load_convention_snapshot)
+       SELECT uuidv7(),$1,$2,exercise_id,position,notes,exercise_name_snapshot,tracking_mode_snapshot,load_mode_snapshot,load_convention_snapshot FROM workout_assignment_exercises
+       WHERE assignment_version_id=$3 ORDER BY position`,
+      [userId, id, assigned.rows[0].version_id],
+    );
+    await db.query(
+      `INSERT INTO session_sets(user_id,session_exercise_id,position,set_type,target_reps_min,target_reps_max,target_duration_seconds,target_load_kg,rest_seconds)
+       SELECT $1,se.id,s.position,s.set_type,s.target_reps_min,s.target_reps_max,s.target_duration_seconds,s.target_load_kg,s.rest_seconds
+       FROM workout_assignment_exercises e JOIN workout_assignment_sets s ON s.assignment_exercise_id=e.id
+       JOIN session_exercises se ON se.session_id=$2 AND se.position=e.position
+       WHERE e.assignment_version_id=$3`,
+      [userId, id, assigned.rows[0].version_id],
+    );
+    await db.query(
+      "UPDATE workout_assignment_recipients SET status='started' WHERE id=$1 AND student_id=$2",
+      [recipientId, userId],
+    );
+    return session(id);
+  }
   async function changeSession(input: Record<string, unknown>) {
     const id = uuid(input.id),
       version = number(input.version, 1, 2147483647);
@@ -293,6 +368,12 @@ export function workoutStore(db: PoolClient, userId: string) {
         'UPDATE workout_sessions SET status=$3,ended_at=now() WHERE id=$1 AND user_id=$2',
         [id, userId, input.action === 'finish' ? 'completed' : 'cancelled'],
       );
+      if (input.action === 'finish')
+        await db.query(
+          `UPDATE workout_assignment_recipients r SET status='completed'
+           FROM workout_sessions w WHERE w.id=$1 AND w.assignment_recipient_id=r.id AND r.student_id=$2`,
+          [id, userId],
+        );
     }
     await db.query('UPDATE workout_sessions SET version=version+1 WHERE id=$1 AND user_id=$2', [
       id,
@@ -328,6 +409,8 @@ export function workoutStore(db: PoolClient, userId: string) {
       }
       case 'start':
         return start(uuid(input.id), uuid(input.templateId), number(input.version, 1, 2147483647));
+      case 'start-assigned':
+        return startAssigned(uuid(input.id), uuid(input.recipientId));
       default:
         return changeSession(input);
     }

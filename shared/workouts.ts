@@ -62,9 +62,21 @@ export type Session = {
   ended_at: string | null;
   exercises: SessionExercise[];
 };
+export type ReceivedWorkout = {
+  recipientId: string;
+  versionId: string;
+  name: string;
+  notes: string;
+  instructions: string;
+  coachName: string;
+  assignedAt: string;
+  status: 'assigned' | 'started' | 'completed';
+  items: (PlanItem & { name: string })[];
+};
 export type WorkoutDashboard = {
   templates: Template[];
   exercises: Exercise[];
   active: Session | null;
   recent: Pick<Session, 'id' | 'name' | 'started_at' | 'ended_at' | 'status'>[];
+  received: ReceivedWorkout[];
 };

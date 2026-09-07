@@ -1,0 +1,132 @@
+.coach-panel {
+  display: grid;
+  gap: 24px;
+}
+.coach-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+.coach-card h3 {
+  margin: 0 0 12px;
+}
+.coach-card__heading,
+.coach-invite-accept,
+.connection-list li,
+.invite-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.coach-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.connection-list {
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+}
+.pending-invites {
+  padding: 0;
+  margin: 18px 0 0;
+  list-style: none;
+}
+.pending-invites li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+.connection-list li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.invite-link input {
+  flex: 1;
+  min-width: 0;
+}
+.disable-coach {
+  margin-top: 18px;
+}
+.disable-coach-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.assignment-form {
+  display: grid;
+  gap: 18px;
+}
+.assignment-form > label {
+  display: grid;
+  gap: 7px;
+  font-weight: 650;
+}
+.assignment-form input,
+.assignment-form select,
+.assignment-form textarea,
+.invite-link input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fafbfd;
+  font: inherit;
+}
+.assignment-form fieldset {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.student-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 18px 4px 0;
+}
+.student-check input {
+  width: auto;
+}
+.student-recipient {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.student-history details {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.student-history summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.history-exercise {
+  padding: 14px;
+  margin-top: 10px;
+  border-radius: 8px;
+  background: #f5f8fc;
+}
+@media (max-width: 760px) {
+  .coach-columns {
+    grid-template-columns: 1fr;
+  }
+  .coach-card__heading,
+  .coach-invite-accept {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .student-recipient {
+    grid-template-columns: 1fr;
+  }
+}

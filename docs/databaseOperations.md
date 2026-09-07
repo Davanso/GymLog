@@ -2,14 +2,15 @@
 
 ## Estado aplicado
 
-Aplicado em 2026-09-04 ao banco Neon configurado no `.env`, PostgreSQL 18.6.
+Atualizado em 2026-09-05 no banco Neon configurado no `.env`, PostgreSQL 18.6.
 
-- 12 tabelas de domínio e `gymlog_migrations` para controle de versões.
+- 20 tabelas de domínio e `gymlog_migrations` para controle de versões.
 - 10 grupos musculares, 6 categorias de equipamento e 12 exercícios iniciais.
 - Sem GIFs, URLs inventadas ou importação de mídia externa. Instruções técnicas ainda precisam de curadoria.
 - FKs, checks, índices, timestamps, snapshots de exercícios e validação de conclusão de sessão.
 - Papel `gymlog_app` sem login, privilégios administrativos ou bypass de RLS.
 - RLS nas tabelas privadas e leitura autenticada do catálogo; alterações no catálogo somente pela administração.
+- Perfil de coach opcional, convites protegidos por hash, vínculos, snapshots de atribuição e leitura compartilhada condicionada ao vínculo ativo.
 - O schema `neon_auth` existente foi preservado; não foram criadas identidades de teste.
 
 O [plano de modelagem](databasePlan.md) continua disponível. Os arquivos em `database/migrations` são a fonte executável do schema.
@@ -43,6 +44,10 @@ Não há execução automática de migrations durante build ou deploy da Vercel.
 | `003_catalog_seed.sql` | Taxonomias, exercícios e músculos relacionados |
 | `004_catalog_read_permissions.sql` | Leitura de snapshot sem exigir escrita no catálogo |
 | `005_catalog_and_template_rest.sql` | IDs externos, descanso por ficha e bloqueio de exercício repetido |
+| `006_coach_relationships_and_assignments.sql` | Coaches, convites, vínculos, snapshots, atribuições e RLS |
+| `007_assignment_snapshot_catalog_permissions.sql` | Snapshot atribuído sem exigir escrita no catálogo |
+| `008_disabled_coach_history_access.sql` | Suspensão do acesso ao histórico para coach desabilitado |
+| `009_assignment_coach_profile_read.sql` | Nome do coach preservado para fichas recebidas após o vínculo |
 
 ## Seed curado em português
 
@@ -83,7 +88,7 @@ Incluir um exercício consulta a versão visível do catálogo naquela instruç�
 
 ## Como o backend deve usar RLS
 
-O papel `gymlog_app` não possui senha nem login. Foi concedido à identidade administrativa que executou a migration. A autenticação do usuário no Neon Auth **ainda precisa ser integrada à API**.
+O papel `gymlog_app` não possui senha nem login. Foi concedido à identidade administrativa que executou a migration. A API valida a sessão pelo Neon Auth antes de definir o contexto restrito da transação.
 
 Somente depois de validar a sessão, o backend pode executar na mesma transação:
 
