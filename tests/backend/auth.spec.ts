@@ -6,7 +6,7 @@ import meHandler from '../../api/me.js';
 import workoutsHandler from '../../api/workouts.js';
 import catalogHandler from '../../api/catalog.js';
 import coachHandler from '../../api/coach.js';
-import { requireUser } from '../../server/auth.js';
+import { authContext, requireUser } from '../../server/auth.js';
 import { json, httpError, writeWebResponse } from '../../server/http.js';
 
 test('auth proxy and protected routes enforce origin, method and verified session', async () => {
@@ -137,4 +137,39 @@ test('auth proxy and protected routes enforce origin, method and verified sessio
       server.close((error) => (error ? reject(error) : resolve())),
     );
   }
+});
+
+test('auth context forwards safe request data and appends response cookies', () => {
+  const headers: Record<string, string | string[] | number | undefined> = {};
+  const request = {
+    headers: {
+      cookie: '__Secure-neon-auth.session_token=test',
+      origin: 'https://gymlog.example',
+      'user-agent': ['invalid', 'shape'],
+    },
+  } as never;
+  const response = {
+    getHeader: (name: string) => headers[name],
+    setHeader: (name: string, value: string | string[]) => {
+      headers[name] = value;
+    },
+  } as never;
+  const context = authContext(request, response);
+
+  assert.ok(context.getCookies());
+  assert.equal(context.getHeader('Origin'), 'https://gymlog.example');
+  assert.equal(context.getHeader('user-agent'), null);
+  assert.equal(context.getHeader('authorization'), null);
+  assert.equal(context.getFramework(), 'vercel-node');
+  context.setCookie('first', 'one', { name: 'ignored', value: 'ignored', path: '/' });
+  assert.equal(Array.isArray(headers['Set-Cookie']), true);
+  headers['Set-Cookie'] = 'existing=one';
+  context.setCookie('second', 'two', { name: 'ignored', value: 'ignored', path: '/' });
+  const twoCookies = headers['Set-Cookie'];
+  assert.ok(Array.isArray(twoCookies));
+  assert.equal(twoCookies.length, 2);
+  context.setCookie('third', 'three', { name: 'ignored', value: 'ignored', path: '/' });
+  const threeCookies = headers['Set-Cookie'];
+  assert.ok(Array.isArray(threeCookies));
+  assert.equal(threeCookies.length, 3);
 });

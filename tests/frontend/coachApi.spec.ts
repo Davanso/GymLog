@@ -27,3 +27,22 @@ test('coach service preserves API errors', async () => {
   globalThis.fetch = async () => Response.json({ error: 'Vínculo encerrado.' }, { status: 403 });
   await assert.rejects(() => coachApi(), /Vínculo encerrado/);
 });
+
+test('coach service redirects expired sessions and provides a fallback error', async () => {
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  let destination = '';
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { location: { replace: (url: string) => (destination = url) } },
+  });
+  try {
+    globalThis.fetch = async () => Response.json({}, { status: 401 });
+    await assert.rejects(() => coachApi(), /Sua sessão expirou/);
+    assert.equal(destination, '/entrar');
+    globalThis.fetch = async () => Response.json({}, { status: 500 });
+    await assert.rejects(() => coachApi(), /Não foi possível concluir esta ação/);
+  } finally {
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+  }
+});
