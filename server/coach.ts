@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import type { PoolClient } from '@neondatabase/serverless';
-import type { CoachDashboard, StudentHistory } from '../shared/coach.js';
+import type { CoachDashboard, StudentAssignment, StudentHistory } from '../shared/coach.js';
 import type { Session } from '../shared/workouts.js';
 import { coachAction, coachText, studentIds } from './coachInput.js';
 import { appOrigin, HttpError } from './http.js';
@@ -207,8 +207,9 @@ export function coachStore(db: PoolClient, userId: string) {
       [userId, studentId],
     );
     if (!relationship.rows[0]) throw new HttpError(403, 'Você não pode acessar este aluno.');
-    const { rows } = await db.query(
-      `SELECT json_build_object('id',w.id,'name',w.name,'version',w.version,'status',w.status,
+    const [sessions, assignments] = await Promise.all([
+      db.query(
+        `SELECT json_build_object('id',w.id,'name',w.name,'version',w.version,'status',w.status,
         'started_at',w.started_at,'ended_at',w.ended_at,'exercises',coalesce((
           SELECT json_agg(json_build_object('id',e.id,'exercise_name_snapshot',e.exercise_name_snapshot,'notes',coalesce(e.notes,''),
             'tracking_mode_snapshot',e.tracking_mode_snapshot,'load_convention_snapshot',e.load_convention_snapshot,
@@ -219,11 +220,22 @@ export function coachStore(db: PoolClient, userId: string) {
               FROM session_sets s WHERE s.session_exercise_id=e.id),'[]'::json)) ORDER BY e.position)
           FROM session_exercises e WHERE e.session_id=w.id),'[]'::json)) result
        FROM workout_sessions w WHERE w.user_id=$1 AND w.status<>'in_progress' ORDER BY w.started_at DESC LIMIT 30`,
-      [studentId],
-    );
+        [studentId],
+      ),
+      db.query(
+        `SELECT r.id,a.title,v.name "templateName",r.status,r.assigned_at "assignedAt",
+          coalesce(nullif(r.instructions,''),nullif(a.instructions,''),'') instructions
+         FROM workout_assignment_recipients r
+         JOIN workout_assignments a ON a.id=r.assignment_id
+         JOIN workout_assignment_versions v ON v.id=a.assignment_version_id
+         WHERE r.student_id=$1 AND a.coach_id=$2 ORDER BY r.assigned_at DESC LIMIT 50`,
+        [studentId, userId],
+      ),
+    ]);
     return {
       student: { id: studentId, name: relationship.rows[0].display_name },
-      sessions: rows.map((row) => row.result as Session),
+      sessions: sessions.rows.map((row) => row.result as Session),
+      assignments: assignments.rows as StudentAssignment[],
     };
   }
   async function execute(raw: unknown) {

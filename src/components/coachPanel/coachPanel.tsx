@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { CoachDashboard, StudentHistory } from '../../../shared/coach';
 import { useConfirmation } from '../../hooks/useConfirmation';
 import { coachApi } from '../../services/coachApi';
@@ -9,8 +9,12 @@ export function CoachPanel() {
   const [data, setData] = useState<CoachDashboard | null>(null);
   const [history, setHistory] = useState<StudentHistory | null>(null);
   const [inviteUrl, setInviteUrl] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState('');
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
+  const [success, setSuccess] = useState('');
   const [pendingOperation, setPendingOperation] = useState<string | null>('initial-load');
   const [error, setError] = useState('');
+  const copyFeedbackTimer = useRef<number | null>(null);
   const { requestConfirmation, confirmation } = useConfirmation();
   const inviteToken = new URLSearchParams(window.location.search).get('convite');
   useEffect(() => {
@@ -32,15 +36,23 @@ export function CoachPanel() {
       active = false;
     };
   }, []);
+  useEffect(
+    () => () => {
+      if (copyFeedbackTimer.current) window.clearTimeout(copyFeedbackTimer.current);
+    },
+    [],
+  );
   async function action(operation: string, job: () => Promise<unknown>) {
-    if (pendingOperation) return;
+    if (pendingOperation) return false;
     setPendingOperation(operation);
     setError('');
     try {
       await job();
       setData(await coachApi<CoachDashboard>());
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível concluir esta ação.');
+      return false;
     } finally {
       setPendingOperation(null);
     }
@@ -64,7 +76,7 @@ export function CoachPanel() {
     const template = data?.templates.find((item) => item.id === templateId);
     if (!template) return;
     const selectedStudents = values.getAll('studentId').map(String);
-    await action('assign', () =>
+    const completed = await action('assign', () =>
       coachApi({
         action: 'assign',
         templateId,
@@ -72,14 +84,24 @@ export function CoachPanel() {
         studentIds: selectedStudents,
         title: String(values.get('title')),
         instructions: String(values.get('instructions')),
-        recipientInstructions: Object.fromEntries(
-          selectedStudents.map((studentId) => [
-            studentId,
-            String(values.get(`instructions-${studentId}`) ?? ''),
-          ]),
-        ),
       }),
     );
+    if (!completed) return;
+    setAssignmentOpen(false);
+    setSuccess(
+      `Ficha atribuída ${selectedStudents.length === 1 ? 'ao aluno selecionado.' : `a ${selectedStudents.length} alunos.`}`,
+    );
+  }
+  async function copyInviteLink() {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopyFeedback('Link copiado.');
+    } catch {
+      setCopyFeedback('Não foi possível copiar o link.');
+    }
+    if (copyFeedbackTimer.current) window.clearTimeout(copyFeedbackTimer.current);
+    copyFeedbackTimer.current = window.setTimeout(() => setCopyFeedback(''), 3000);
   }
   async function showHistory(studentId: string) {
     if (pendingOperation) return;
@@ -116,6 +138,11 @@ export function CoachPanel() {
         )}
       </div>
       {error && <p className="message error">{error}</p>}
+      {success && (
+        <p className="message success" role="status">
+          {success}
+        </p>
+      )}
       {inviteToken && (
         <article className="coach-card coach-invite-accept">
           <div>
@@ -164,20 +191,21 @@ export function CoachPanel() {
           {inviteUrl && (
             <div className="invite-link">
               <input readOnly value={inviteUrl} aria-label="Link do convite" />
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => void navigator.clipboard.writeText(inviteUrl)}
-              >
+              <button type="button" className="text-button" onClick={() => void copyInviteLink()}>
                 Copiar
               </button>
             </div>
+          )}
+          {copyFeedback && (
+            <p className="copy-feedback" role="status">
+              {copyFeedback}
+            </p>
           )}
           {!!data.invites.length && (
             <ul className="pending-invites">
               {data.invites.map((invite) => (
                 <li key={invite.id}>
-                  <span>
+                  <span className="student-actions">
                     Convite criado em {new Date(invite.createdAt).toLocaleDateString('pt-BR')} ·
                     expira em {new Date(invite.expiresAt).toLocaleDateString('pt-BR')}
                   </span>
@@ -276,10 +304,36 @@ export function CoachPanel() {
           </article>
         )}
       </div>
-      {data?.enabled && data.students.length > 0 && data.templates.length > 0 && (
+      {data?.enabled &&
+        data.students.length > 0 &&
+        data.templates.length > 0 &&
+        !assignmentOpen && (
+          <article className="coach-card assignment-intro">
+            <p className="eyebrow">ATRIBUIR FICHA</p>
+            <h3>Envie uma versão fechada do treino para seus alunos</h3>
+            <p className="muted">
+              A ficha fica preservada como foi enviada, mesmo que você a edite depois.
+            </p>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setAssignmentOpen(true)}
+            >
+              Atribuir uma ficha
+            </button>
+          </article>
+        )}
+      {data?.enabled && data.students.length > 0 && data.templates.length > 0 && assignmentOpen && (
         <form className="coach-card assignment-form" onSubmit={(event) => void assign(event)}>
-          <p className="eyebrow">ATRIBUIR FICHA</p>
-          <h3>Envie uma versão fechada do treino</h3>
+          <div className="coach-card__heading">
+            <div>
+              <p className="eyebrow">ATRIBUIR FICHA</p>
+              <h3>Envie uma versão fechada do treino</h3>
+            </div>
+            <button type="button" className="text-button" onClick={() => setAssignmentOpen(false)}>
+              Cancelar
+            </button>
+          </div>
           <label>
             Ficha
             <select name="templateId" required>
@@ -302,11 +356,6 @@ export function CoachPanel() {
                   <input type="checkbox" name="studentId" value={student.profileId} />
                   {student.name}
                 </label>
-                <input
-                  name={`instructions-${student.profileId}`}
-                  maxLength={2000}
-                  placeholder={`Instrução individual para ${student.name}`}
-                />
               </div>
             ))}
           </fieldset>
@@ -354,6 +403,36 @@ export function CoachPanel() {
               ))}
             </details>
           ))}
+          <section className="assignment-history">
+            <p className="eyebrow">FICHAS ATRIBUÍDAS</p>
+            <h4>Envios para {history.student.name}</h4>
+            {!history.assignments.length && (
+              <p className="muted">Nenhuma ficha foi atribuída ainda.</p>
+            )}
+            <ul>
+              {history.assignments.map((assignment) => (
+                <li key={assignment.id}>
+                  <div>
+                    <strong>{assignment.title}</strong>
+                    <span>{assignment.templateName}</span>
+                  </div>
+                  <div className="assignment-history__meta">
+                    <span>{new Date(assignment.assignedAt).toLocaleDateString('pt-BR')}</span>
+                    <span className={`assignment-status assignment-status--${assignment.status}`}>
+                      {assignment.status === 'assigned'
+                        ? 'Não iniciada'
+                        : assignment.status === 'started'
+                          ? 'Em andamento'
+                          : assignment.status === 'completed'
+                            ? 'Concluída'
+                            : 'Retirada'}
+                    </span>
+                  </div>
+                  {assignment.instructions && <p>{assignment.instructions}</p>}
+                </li>
+              ))}
+            </ul>
+          </section>
         </article>
       )}
       {confirmation}
