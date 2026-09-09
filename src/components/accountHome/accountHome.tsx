@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { auth } from '../../services/auth';
 import { CoachPanel } from '../coachPanel/coachPanel';
 import { LoadingState } from '../loadingState/loadingState';
@@ -191,9 +192,7 @@ export function AccountHome() {
             }
             disabled={busy}
           >
-            <span className="sidebar-icon" aria-hidden="true">
-              ↪
-            </span>
+            <LogOut className="sidebar-icon" aria-hidden="true" size={19} strokeWidth={2.25} />
             <span className="sidebar-label">{busy ? 'Saindo…' : 'Sair da conta'}</span>
             {busy && <LoadingState label="Saindo…" compact />}
           </button>

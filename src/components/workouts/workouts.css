@@ -48,16 +48,59 @@
 .template-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  align-items: start;
   gap: 20px;
 }
 .template-card {
   background: white;
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 28px;
+  padding: 0;
+  overflow: hidden;
+}
+.template-card details {
+  height: 100%;
+}
+.template-card__summary {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
+  padding: 24px 26px;
+  cursor: pointer;
+  list-style: none;
+}
+.template-card__summary::-webkit-details-marker {
+  display: none;
+}
+.template-card__summary .eyebrow {
+  display: block;
+  margin-bottom: 6px;
+}
+.template-card__summary strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.template-card__toggle {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid var(--blue);
+  border-bottom: 2px solid var(--blue);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 160ms ease;
+}
+.template-card details[open] .template-card__toggle {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+.template-card__body {
+  display: grid;
+  gap: 16px;
+  padding: 0 26px 26px;
+  border-top: 1px solid #edf1f6;
+  padding-top: 20px;
 }
 .template-card h3 {
   font-size: 25px;
@@ -201,6 +244,7 @@
   gap: 18px;
 }
 .rest-timer {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 16px 24px;
@@ -208,6 +252,22 @@
   border-radius: 14px;
   background: #dfe9f6;
   margin-bottom: 24px;
+}
+.rest-timer--active {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  width: min(360px, calc(100vw - 48px));
+  margin: 0;
+  padding: 18px;
+  border: 1px solid #b9cbed;
+  background: #f5f8ffed;
+  box-shadow: 0 18px 50px #14243a2e;
+  backdrop-filter: blur(14px);
+}
+.rest-timer--active .rest-timer__time {
+  font-size: clamp(30px, 5vw, 42px);
 }
 .rest-timer .workout-actions {
   grid-column: 1/-1;
@@ -321,10 +381,15 @@
     align-items: stretch;
     flex-direction: column;
   }
-  .template-card,
   .workout-empty,
   .session-exercise {
     padding: 20px;
+  }
+  .template-card__summary {
+    padding: 20px;
+  }
+  .template-card__body {
+    padding: 18px 20px 20px;
   }
   .session-exercise__heading {
     align-items: flex-start;
@@ -332,6 +397,12 @@
   }
   .rest-timer {
     grid-template-columns: 1fr;
+  }
+  .rest-timer--active {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+    padding: 16px;
   }
   .rest-timer__time {
     grid-row: 2;

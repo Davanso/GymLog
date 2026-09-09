@@ -20,6 +20,7 @@ export function RestTimer({
   const audio = useRef<AudioContext | null>(null);
   const announced = useRef<string | null>(null);
   const remaining = clock ? Math.min(clock.remaining, remainingMs(clock, now)) : 0;
+  const active = Boolean(clock && remaining > 0);
   useEffect(() => {
     if (!clock) return;
     const tick = () => setNow(Date.now());
@@ -72,10 +73,13 @@ export function RestTimer({
   }
   const seconds = Math.ceil(remaining / 1000);
   return (
-    <aside className="rest-timer" aria-label="Descanso entre séries">
-      <div>
+    <aside
+      className={`rest-timer${active ? ' rest-timer--active' : ''}`}
+      aria-label="Descanso entre séries"
+    >
+      <div className="rest-timer__summary">
         <p className="eyebrow">DESCANSO</p>
-        <p role="status">
+        <p role="status" className="rest-timer__status">
           {!clock
             ? 'Pronto para a próxima série'
             : remaining === 0
@@ -93,7 +97,7 @@ export function RestTimer({
         <span>:</span>
         {String(seconds % 60).padStart(2, '0')}
       </div>
-      <div className="workout-actions">
+      <div className="workout-actions rest-timer__actions">
         {clock && remaining > 0 && (
           <>
             <button

@@ -262,80 +262,89 @@ export function Workouts({
               <div className="template-grid">
                 {data.templates.map((template) => (
                   <article className="template-card" key={template.id}>
-                    <p className="eyebrow">
-                      {template.items.length} EXERCÍCIOS ·{' '}
-                      {template.items.reduce((n, i) => n + i.sets, 0)} SÉRIES
-                    </p>
-                    <h3>{template.name}</h3>
-                    {template.notes && <p className="muted">{template.notes}</p>}
-                    <ol>
-                      {template.items.map((item, index) => (
-                        <li key={index}>
-                          {data.exercises.find((e) => e.id === item.exerciseId)?.name ||
-                            'Exercício'}{' '}
-                          <span>
-                            {item.sets} ×{' '}
-                            {item.reps === null
-                              ? `${item.seconds}s`
-                              : item.repsMax && item.repsMax !== item.reps
-                                ? `${item.reps}-${item.repsMax}`
-                                : item.reps}
+                    <details>
+                      <summary className="template-card__summary">
+                        <span>
+                          <span className="eyebrow">
+                            {template.items.length} EXERCÍCIOS ·{' '}
+                            {template.items.reduce((n, i) => n + i.sets, 0)} SÉRIES
                           </span>
-                        </li>
-                      ))}
-                    </ol>
-                    <div className="workout-actions">
-                      <button
-                        type="button"
-                        className="primary-button"
-                        disabled={!!data.active}
-                        onClick={() => start(template)}
-                      >
-                        Iniciar treino
-                      </button>
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => setEditor(template)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        className="text-button danger"
-                        onClick={() => {
-                          requestConfirmation(
-                            {
-                              title: `Excluir a ficha “${template.name}”?`,
-                              description: 'Seus treinos realizados serão preservados.',
-                              confirmLabel: 'Excluir ficha',
-                              cancelLabel: 'Manter ficha',
-                            },
-                            () => {
-                              void perform(async () => {
-                                await workoutApi({
-                                  action: 'archive',
-                                  id: template.id,
-                                  version: template.version,
-                                });
-                                setData((old) =>
-                                  old
-                                    ? {
-                                        ...old,
-                                        templates: old.templates.filter(
-                                          (t) => t.id !== template.id,
-                                        ),
-                                      }
-                                    : old,
-                                );
-                              });
-                            },
-                          );
-                        }}
-                      >
-                        Excluir
-                      </button>
-                    </div>
+                          <strong>{template.name}</strong>
+                        </span>
+                        <span className="template-card__toggle" aria-hidden="true" />
+                      </summary>
+                      <div className="template-card__body">
+                        {template.notes && <p className="muted">{template.notes}</p>}
+                        <ol>
+                          {template.items.map((item, index) => (
+                            <li key={index}>
+                              {data.exercises.find((e) => e.id === item.exerciseId)?.name ||
+                                'Exercício'}{' '}
+                              <span>
+                                {item.sets} ×{' '}
+                                {item.reps === null
+                                  ? `${item.seconds}s`
+                                  : item.repsMax && item.repsMax !== item.reps
+                                    ? `${item.reps}-${item.repsMax}`
+                                    : item.reps}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                        <div className="workout-actions">
+                          <button
+                            type="button"
+                            className="primary-button"
+                            disabled={!!data.active}
+                            onClick={() => start(template)}
+                          >
+                            Iniciar treino
+                          </button>
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => setEditor(template)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="text-button danger"
+                            onClick={() => {
+                              requestConfirmation(
+                                {
+                                  title: `Excluir a ficha “${template.name}”?`,
+                                  description: 'Seus treinos realizados serão preservados.',
+                                  confirmLabel: 'Excluir ficha',
+                                  cancelLabel: 'Manter ficha',
+                                },
+                                () => {
+                                  void perform(async () => {
+                                    await workoutApi({
+                                      action: 'archive',
+                                      id: template.id,
+                                      version: template.version,
+                                    });
+                                    setData((old) =>
+                                      old
+                                        ? {
+                                            ...old,
+                                            templates: old.templates.filter(
+                                              (t) => t.id !== template.id,
+                                            ),
+                                          }
+                                        : old,
+                                    );
+                                  });
+                                },
+                              );
+                            }}
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
+                    </details>
                   </article>
                 ))}
               </div>
@@ -351,30 +360,41 @@ export function Workouts({
                   <div className="template-grid">
                     {data.received.map((received) => (
                       <article className="template-card received-card" key={received.recipientId}>
-                        <p className="eyebrow">COACH {received.coachName.toUpperCase()}</p>
-                        <h3>{received.name}</h3>
-                        {received.notes && <p className="muted">{received.notes}</p>}
-                        {received.instructions && (
-                          <p className="exercise-guidance">{received.instructions}</p>
-                        )}
-                        <ol>
-                          {received.items.map((item) => (
-                            <li key={item.exerciseId}>
-                              {item.name} <span>{item.sets} séries</span>
-                            </li>
-                          ))}
-                        </ol>
-                        <div className="workout-actions">
-                          <button
-                            type="button"
-                            className="primary-button"
-                            disabled={!!data.active}
-                            onClick={() => startReceived(received)}
-                          >
-                            Iniciar treino
-                          </button>
-                          <span className="read-only-badge">Somente leitura</span>
-                        </div>
+                        <details>
+                          <summary className="template-card__summary">
+                            <span>
+                              <span className="eyebrow">
+                                COACH {received.coachName.toUpperCase()}
+                              </span>
+                              <strong>{received.name}</strong>
+                            </span>
+                            <span className="template-card__toggle" aria-hidden="true" />
+                          </summary>
+                          <div className="template-card__body">
+                            {received.notes && <p className="muted">{received.notes}</p>}
+                            {received.instructions && (
+                              <p className="exercise-guidance">{received.instructions}</p>
+                            )}
+                            <ol>
+                              {received.items.map((item) => (
+                                <li key={item.exerciseId}>
+                                  {item.name} <span>{item.sets} séries</span>
+                                </li>
+                              ))}
+                            </ol>
+                            <div className="workout-actions">
+                              <button
+                                type="button"
+                                className="primary-button"
+                                disabled={!!data.active}
+                                onClick={() => startReceived(received)}
+                              >
+                                Iniciar treino
+                              </button>
+                              <span className="read-only-badge">Somente leitura</span>
+                            </div>
+                          </div>
+                        </details>
                       </article>
                     ))}
                   </div>
