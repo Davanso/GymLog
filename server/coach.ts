@@ -196,6 +196,11 @@ export function coachStore(db: PoolClient, userId: string) {
           coachText(recipientInstructions[relationship.student_id] ?? '', 2000),
         ],
       );
+      await db.query(
+        `INSERT INTO app_notifications(recipient_id,actor_id,kind,title,body,link)
+         VALUES($1,$2,'workout_assigned','Nova ficha atribuída',$3,'/app?secao=calendario')`,
+        [relationship.student_id, userId, title],
+      );
     }
     return { id: assignmentId, recipients: relationships.rows.length };
   }

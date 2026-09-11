@@ -1,0 +1,518 @@
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Bell, CalendarDays, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import type { CalendarDashboard, CalendarEvent } from '../../../shared/calendar';
+import { calendarApi } from '../../services/calendarApi';
+import { workoutApi } from '../../services/workoutApi';
+import { LoadingState } from '../loadingState/loadingState';
+import './calendarPanel.css';
+
+const weekdayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+function localDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+function shiftMonth(month: string, amount: number) {
+  const [year, value] = month.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, value - 1 + amount, 1));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+function monthCells(month: string) {
+  const [year, value] = month.split('-').map(Number);
+  const count = new Date(year, value, 0).getDate();
+  const first = new Date(year, value - 1, 1).getDay();
+  const offset = first === 0 ? 6 : first - 1;
+  return [
+    ...Array(offset).fill(null),
+    ...Array.from(
+      { length: count },
+      (_, index) => `${month}-${String(index + 1).padStart(2, '0')}`,
+    ),
+  ];
+}
+
+export function CalendarPanel() {
+  const [month, setMonth] = useState(localDate().slice(0, 7));
+  const [subjectId, setSubjectId] = useState('');
+  const [data, setData] = useState<CalendarDashboard | null>(null);
+  const [selectedDate, setSelectedDate] = useState(localDate());
+  const [requesting, setRequesting] = useState<CalendarEvent | null>(null);
+  const [responses, setResponses] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [reload, setReload] = useState(0);
+  const cells = useMemo(() => monthCells(month), [month]);
+  useEffect(() => {
+    const controller = new AbortController();
+    calendarApi(undefined, {
+      month,
+      subjectId: subjectId || undefined,
+      signal: controller.signal,
+    })
+      .then(setData)
+      .catch((cause) => {
+        if (!controller.signal.aborted)
+          setError(cause instanceof Error ? cause.message : 'Não foi possível carregar a agenda.');
+      });
+    return () => controller.abort();
+  }, [month, reload, subjectId]);
+  async function mutate(input: unknown, message: string) {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      await calendarApi(input);
+      setData(
+        await calendarApi(undefined, {
+          month,
+          subjectId: subjectId || undefined,
+        }),
+      );
+      setSuccess(message);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível salvar a alteração.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveSchedule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const sourceId = String(values.get('sourceId'));
+    const source = data?.schedules.find((item) => item.id === sourceId);
+    if (!source) return;
+    await mutate(
+      {
+        action: 'save-schedule',
+        subjectId: data?.subject.id,
+        sourceId,
+        source: source.source,
+        weekdays: values.getAll('weekday').map(Number),
+        startsOn: String(values.get('startsOn')),
+      },
+      'Dias de treino atualizados.',
+    );
+  }
+  async function sendRequest(
+    event: FormEvent<HTMLFormElement>,
+    sourceId: string,
+    occurrence?: CalendarEvent,
+  ) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    await mutate(
+      occurrence
+        ? {
+            action: 'request-change',
+            kind: 'one_off',
+            recipientId: sourceId,
+            scheduledWorkoutId: occurrence.id,
+            proposedDate: values.get('proposedDate'),
+            message: values.get('message'),
+          }
+        : {
+            action: 'request-change',
+            kind: 'recurring',
+            recipientId: sourceId,
+            weekdays: values.getAll('weekday').map(Number),
+            message: values.get('message'),
+          },
+      'Solicitação enviada ao coach.',
+    );
+    setRequesting(null);
+  }
+  async function startWorkout(item: CalendarEvent) {
+    setBusy(true);
+    setError('');
+    try {
+      await workoutApi({
+        action: item.source === 'personal' ? 'start' : 'start-assigned',
+        id: crypto.randomUUID(),
+        ...(item.source === 'personal'
+          ? { templateId: item.sourceId, version: item.version }
+          : { recipientId: item.sourceId }),
+        scheduledWorkoutId: item.id,
+      });
+      window.location.assign('/app');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível iniciar o treino.');
+      setBusy(false);
+    }
+  }
+  const day = data?.days.find((item) => item.date === selectedDate);
+  const selectedSource = data?.schedules.find((item) => item.id === requesting?.sourceId);
+  function navigateMonth(amount: number) {
+    const next = shiftMonth(month, amount);
+    setMonth(next);
+    setSelectedDate(`${next}-01`);
+  }
+  return (
+    <section className="calendar-panel">
+      <header className="calendar-heading">
+        <div>
+          <p className="eyebrow">AGENDA DE TREINOS</p>
+          <h2>Calendário</h2>
+          <p className="muted">Planejamento e aderência.</p>
+        </div>
+        {!!data?.students.length && (
+          <label className="calendar-student-select">
+            Visualizando
+            <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
+              <option value="">Meu calendário</option>
+              {data.students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </header>
+      {error && data && (
+        <p className="message error" role="alert">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="message success" role="status">
+          {success}
+        </p>
+      )}
+      {!data && !error ? (
+        <div className="calendar-loading">
+          <LoadingState label="Carregando calendário…" />
+        </div>
+      ) : !data ? (
+        <div className="calendar-load-error" role="alert">
+          <CalendarDays aria-hidden="true" />
+          <h3>Não foi possível abrir o calendário</h3>
+          <p>{error}</p>
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={() => {
+              setError('');
+              setReload((value) => value + 1);
+            }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : (
+        <>
+          {data.subject.isSelf && !!data.notifications.length && (
+            <details
+              className="notification-center"
+              onToggle={(event) => {
+                if ((event.currentTarget as HTMLDetailsElement).open && data.unreadNotifications)
+                  void mutate({ action: 'read-notifications' }, '');
+              }}
+            >
+              <summary>
+                <Bell aria-hidden="true" /> Notificações{' '}
+                {data.unreadNotifications > 0 && <span>{data.unreadNotifications}</span>}
+              </summary>
+              <ul>
+                {data.notifications.map((item) => (
+                  <li key={item.id} className={item.readAt ? '' : 'notification--unread'}>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                    <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+          <div className="calendar-layout">
+            <div className="calendar-card">
+              <div className="calendar-toolbar">
+                <button type="button" aria-label="Mês anterior" onClick={() => navigateMonth(-1)}>
+                  <ChevronLeft />
+                </button>
+                <strong>
+                  {new Date(`${month}-02T12:00:00`).toLocaleDateString('pt-BR', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </strong>
+                <button type="button" aria-label="Próximo mês" onClick={() => navigateMonth(1)}>
+                  <ChevronRight />
+                </button>
+              </div>
+              <div className="calendar-grid calendar-grid--labels">
+                {weekdayNames.map((name) => (
+                  <span key={name}>{name}</span>
+                ))}
+              </div>
+              <div className="calendar-grid">
+                {cells.map((dateValue, index) => {
+                  if (!dateValue) return <span key={`blank-${index}`} />;
+                  const info = data.days.find((item) => item.date === dateValue);
+                  return (
+                    <button
+                      type="button"
+                      key={dateValue}
+                      className={`calendar-day calendar-day--${info?.status || 'neutral'}${selectedDate === dateValue ? ' calendar-day--selected' : ''}`}
+                      onClick={() => setSelectedDate(dateValue)}
+                      aria-label={`${dateValue}${info ? `, ${info.completed} de ${info.planned} treinos concluídos` : ', sem treino'}`}
+                    >
+                      <span>{Number(dateValue.slice(-2))}</span>
+                      {info && (
+                        <small>
+                          {info.completed}/{info.planned}
+                        </small>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="calendar-legend">
+                <span className="legend-completed">Concluído</span>
+                <span className="legend-missed">Não realizado</span>
+                <span className="legend-planned">Planejado</span>
+              </div>
+            </div>
+            <aside className="day-card">
+              <p className="eyebrow">
+                {new Date(`${selectedDate}T12:00:00`)
+                  .toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
+                  .toUpperCase()}
+              </p>
+              <h3>
+                {day?.events.length ? `${day.completed} de ${day.planned} realizados` : 'Dia livre'}
+              </h3>
+              {!day?.events.length && <p className="muted">Nenhum treino previsto ou realizado.</p>}
+              {day?.events.map((item) => (
+                <article className="calendar-event" key={item.id}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span>
+                      {item.source === 'coach' ? `Coach ${item.coachName}` : 'Ficha pessoal'} ·{' '}
+                      {item.status === 'completed'
+                        ? 'Concluído'
+                        : item.status === 'missed'
+                          ? 'Não realizado'
+                          : item.status === 'rescheduled'
+                            ? 'Reagendado'
+                            : item.status === 'cancelled'
+                              ? 'Cancelado'
+                              : 'Planejado'}
+                    </span>
+                  </div>
+                  {data.subject.isSelf &&
+                    selectedDate === data.subject.today &&
+                    ['planned', 'missed'].includes(item.status) && (
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={busy}
+                        onClick={() => void startWorkout(item)}
+                      >
+                        Iniciar
+                      </button>
+                    )}
+                  {data.subject.isSelf &&
+                    item.source === 'coach' &&
+                    ['planned', 'missed'].includes(item.status) && (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setRequesting(item)}
+                      >
+                        Solicitar outra data
+                      </button>
+                    )}
+                </article>
+              ))}
+            </aside>
+          </div>
+          <section className="schedule-settings">
+            <div>
+              <p className="eyebrow">PROGRAMAÇÃO SEMANAL</p>
+              <h3>{data.subject.isSelf ? 'Defina seus dias' : `Agenda de ${data.subject.name}`}</h3>
+            </div>
+            {data.schedules
+              .filter((item) => item.canManage)
+              .map((source) => (
+                <form
+                  key={`${source.id}:${source.weekdays.join('-')}`}
+                  className="schedule-row"
+                  onSubmit={(event) => void saveSchedule(event)}
+                >
+                  <input type="hidden" name="sourceId" value={source.id} />
+                  <div className="schedule-row__identity">
+                    <small>
+                      {source.source === 'coach'
+                        ? `Ficha atribuída por ${source.coachName}`
+                        : 'Ficha pessoal'}
+                    </small>
+                    <strong>{source.name}</strong>
+                  </div>
+                  <div className="weekday-picker">
+                    {weekdayNames.map((name, index) => (
+                      <label key={name}>
+                        <input
+                          type="checkbox"
+                          name="weekday"
+                          value={index + 1}
+                          defaultChecked={source.weekdays.includes(index + 1)}
+                        />
+                        <span>{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <label className="start-date">
+                    A partir de
+                    <input type="date" name="startsOn" required defaultValue={data.subject.today} />
+                  </label>
+                  <button className="secondary-button" disabled={busy}>
+                    Salvar dias
+                  </button>
+                </form>
+              ))}
+            {data.subject.isSelf &&
+              data.schedules
+                .filter((item) => item.source === 'coach')
+                .map((source) => (
+                  <details className="schedule-request" key={`request-${source.id}`}>
+                    <summary>Solicitar mudança recorrente em “{source.name}”</summary>
+                    <form onSubmit={(event) => void sendRequest(event, source.id)}>
+                      <div className="weekday-picker">
+                        {weekdayNames.map((name, index) => (
+                          <label key={name}>
+                            <input type="checkbox" name="weekday" value={index + 1} />
+                            <span>{name}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <textarea
+                        name="message"
+                        maxLength={500}
+                        placeholder="Explique brevemente o motivo"
+                      />
+                      <button className="secondary-button" disabled={busy}>
+                        Enviar solicitação
+                      </button>
+                    </form>
+                  </details>
+                ))}
+          </section>
+          {!!data.requests.length && (
+            <section className="request-list">
+              <p className="eyebrow">SOLICITAÇÕES</p>
+              <h3>Mudanças de agenda</h3>
+              {data.requests.map((request) => (
+                <article key={request.id}>
+                  <div>
+                    <strong>{request.workoutName}</strong>
+                    <p>
+                      {request.studentName} ·{' '}
+                      {request.kind === 'recurring'
+                        ? `Dias ${request.proposedWeekdays?.map((value) => weekdayNames[value - 1]).join(', ')}`
+                        : `Mover para ${request.proposedDate ? new Date(`${request.proposedDate}T12:00:00`).toLocaleDateString('pt-BR') : ''}`}
+                    </p>
+                    {request.message && <small>{request.message}</small>}
+                  </div>
+                  <span className={`request-status request-status--${request.status}`}>
+                    {request.status === 'pending'
+                      ? 'Pendente'
+                      : request.status === 'approved'
+                        ? 'Aprovada'
+                        : 'Recusada'}
+                  </span>
+                  {request.canRespond && request.status === 'pending' && (
+                    <div className="request-response">
+                      <textarea
+                        aria-label="Observação para o aluno"
+                        maxLength={500}
+                        placeholder="Observação opcional"
+                        value={responses[request.id] ?? ''}
+                        onChange={(event) =>
+                          setResponses((current) => ({
+                            ...current,
+                            [request.id]: event.target.value,
+                          }))
+                        }
+                      />
+                      <div className="request-actions">
+                        <button
+                          type="button"
+                          aria-label="Aprovar"
+                          onClick={() =>
+                            void mutate(
+                              {
+                                action: 'respond-request',
+                                id: request.id,
+                                decision: 'approved',
+                                response: responses[request.id] ?? '',
+                              },
+                              'Solicitação aprovada.',
+                            )
+                          }
+                        >
+                          <Check />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Recusar"
+                          onClick={() =>
+                            void mutate(
+                              {
+                                action: 'respond-request',
+                                id: request.id,
+                                decision: 'rejected',
+                                response: responses[request.id] ?? '',
+                              },
+                              'Solicitação recusada.',
+                            )
+                          }
+                        >
+                          <X />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </section>
+          )}
+          {requesting && selectedSource && (
+            <dialog open className="request-dialog">
+              <form
+                method="dialog"
+                onSubmit={(event) => void sendRequest(event, selectedSource.id, requesting)}
+              >
+                <button
+                  type="button"
+                  className="dialog-close"
+                  aria-label="Fechar"
+                  onClick={() => setRequesting(null)}
+                >
+                  <X />
+                </button>
+                <CalendarDays aria-hidden="true" />
+                <h3>Solicitar outra data</h3>
+                <p>
+                  {requesting.name} · atualmente em{' '}
+                  {new Date(`${requesting.date}T12:00:00`).toLocaleDateString('pt-BR')}
+                </p>
+                <label>
+                  Nova data
+                  <input type="date" name="proposedDate" required min={data.subject.today} />
+                </label>
+                <label>
+                  Mensagem
+                  <textarea name="message" maxLength={500} />
+                </label>
+                <button className="primary-button" disabled={busy}>
+                  Enviar ao coach
+                </button>
+              </form>
+            </dialog>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

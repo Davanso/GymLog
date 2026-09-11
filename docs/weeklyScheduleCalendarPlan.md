@@ -1,6 +1,6 @@
 # GymLog — planejamento de agenda semanal e calendário
 
-**Status: proposta para discussão; schema e interface ainda não implementados.** Este documento complementa o [planejamento do banco](databasePlan.md) e o módulo de [coach e aluno](coachStudentPlan.md). A implementação exige uma migration nova.
+**Status: Etapa 1 implementada em 2026-09-08.** O schema foi adicionado pela migration `010`, sem alterar migrations anteriores. Este documento complementa o [planejamento do banco](databasePlan.md) e o módulo de [coach e aluno](coachStudentPlan.md).
 
 ## Objetivo
 
@@ -18,8 +18,10 @@ Para coaches, o mesmo calendário permite selecionar um aluno com vínculo ativo
 - Datas são interpretadas no fuso configurado no perfil do aluno.
 - Alterar a agenda vale a partir de uma data escolhida e não reescreve o passado.
 - Fichas recebidas continuam somente leitura. O coach define a agenda ao atribuir ou posteriormente; o aluno visualiza e executa.
-- O aluno pode programar suas próprias fichas. Reagendamento de ficha recebida fica fora da primeira versão.
+- O aluno pode programar suas próprias fichas. A agenda de uma ficha recebida é controlada exclusivamente pelo coach.
+- O aluno pode solicitar ao coach uma mudança recorrente de dias ou o reagendamento pontual de uma ocorrência. A mudança só é aplicada após aprovação.
 - O coach acessa o calendário de um aluno somente enquanto o vínculo estiver ativo.
+- Notificações internas registram novas atribuições, solicitações, respostas e mudanças de agenda.
 
 ## Por que o dia da semana não deve ficar na ficha
 
@@ -142,6 +144,22 @@ Para uma ficha recebida, os dias aparecem como informação somente leitura. A a
 - A primeira versão permite leitura do calendário e criação de agenda para fichas atribuídas pelo próprio coach. Não permite alterar fichas pessoais do aluno ou agendas criadas por outro coach.
 - Se o vínculo for encerrado durante a tela aberta, a próxima consulta ou mutação retorna `403` e remove os dados do aluno da interface.
 
+### Solicitações e notificações
+
+- Uma solicitação recorrente propõe um novo conjunto de dias para uma ficha recebida.
+- Uma solicitação pontual referencia uma ocorrência existente e propõe uma nova data.
+- O coach pode aprovar ou rejeitar e incluir uma observação para o aluno.
+- Aprovar uma mudança recorrente encerra as regras anteriores e cria regras futuras; aprovar uma mudança pontual preserva a ocorrência original como `rescheduled`.
+- A central de notificações fica na aba Calendário e mantém estado lido/não lido.
+- Web Push, preferências por dispositivo e badge do PWA ficam para a Etapa 2. A implementação deverá consumir os eventos persistidos em `app_notifications`.
+
+### Etapa 2 — relatórios e push
+
+- Criar uma aba separada “Relatórios”, sem sobrecarregar o calendário.
+- Oferecer resumos semanal e mensal de aderência, duração, séries, faltas e evolução de carga.
+- Permitir que o coach consulte os mesmos resumos no contexto de um aluno autorizado.
+- Adicionar PWA, Service Worker, assinaturas Web Push e preferências de notificação por categoria/dispositivo.
+
 ## API prevista
 
 | Operação | Comportamento |
@@ -153,6 +171,9 @@ Para uma ficha recebida, os dias aparecem como informação somente leitura. A a
 | Iniciar ocorrência | Cria sessão e vincula ao compromisso atomicamente |
 | Consultar calendário de aluno | Exige vínculo ativo e permissão de histórico |
 | Encerrar programação | Preserva passado e cancela ocorrências futuras elegíveis |
+| Solicitar mudança recorrente ou pontual | Registra pedido pendente e notifica o coach |
+| Responder solicitação | Aprova ou rejeita atomicamente e notifica o aluno |
+| Listar/marcar notificações | Retorna a central do usuário e controla itens não lidos |
 
 A resposta mensal deve vir agregada para evitar uma requisição por dia. Exemplo conceitual:
 
@@ -209,11 +230,6 @@ A resposta mensal deve vir agregada para evitar uma requisição por dia. Exempl
 
 ## Ordem de implementação
 
-1. Aprovar as regras de reagendamento, cancelamento e aderência visual.
-2. Implementar primeiro o schema de coach e atribuições descrito em [coach e aluno](coachStudentPlan.md).
-3. Criar uma migration nova para agenda, ocorrências e vínculo com sessões.
-4. Estender RLS e testes de isolamento.
-5. Implementar endpoints de agenda e consulta mensal.
-6. Adicionar seleção de dias às fichas pessoais e atribuídas.
-7. Criar a aba Calendário para o usuário.
-8. Adicionar o seletor de aluno e a visão autorizada do coach.
+1. Aplicar a migration `010` em uma branch de desenvolvimento do Neon e executar os testes de integração.
+2. Validar a experiência responsiva do calendário com aluno e coach reais.
+3. Implementar a Etapa 2 somente após observar o uso das solicitações e notificações internas.

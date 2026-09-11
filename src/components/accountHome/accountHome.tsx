@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LogOut } from 'lucide-react';
+import { CalendarDays, LogOut } from 'lucide-react';
 import { auth } from '../../services/auth';
 import { CoachPanel } from '../coachPanel/coachPanel';
+import { CalendarPanel } from '../calendarPanel/calendarPanel';
 import { LoadingState } from '../loadingState/loadingState';
 import { Workouts } from '../workouts/workouts';
 import './accountHome.css';
@@ -30,9 +31,14 @@ export function AccountHome() {
   const [workoutsReady, setWorkoutsReady] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(storedSidebarPreference);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [section, setSection] = useState<'workouts' | 'coach'>(() =>
-    new URLSearchParams(window.location.search).has('convite') ? 'coach' : 'workouts',
-  );
+  const [section, setSection] = useState<'workouts' | 'calendar' | 'coach'>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('convite')
+      ? 'coach'
+      : params.get('secao') === 'calendario'
+        ? 'calendar'
+        : 'workouts';
+  });
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
@@ -91,7 +97,7 @@ export function AccountHome() {
       return !collapsed;
     });
   }
-  function changeSection(next: 'workouts' | 'coach') {
+  function changeSection(next: 'workouts' | 'calendar' | 'coach') {
     const change = () => {
       setSection(next);
       setMobileMenuOpen(false);
@@ -161,6 +167,16 @@ export function AccountHome() {
           <nav aria-label="Menu principal">
             <button
               type="button"
+              className={`sidebar-tab${section === 'calendar' ? ' sidebar-tab--active' : ''}`}
+              aria-label="Calendário"
+              aria-current={section === 'calendar' ? 'page' : undefined}
+              onClick={() => changeSection('calendar')}
+            >
+              <CalendarDays className="sidebar-icon" aria-hidden="true" size={19} />
+              <span className="sidebar-label">Calendário</span>
+            </button>
+            <button
+              type="button"
               className={`sidebar-tab${section === 'workouts' ? ' sidebar-tab--active' : ''}`}
               aria-label="Minhas fichas"
               aria-current={section === 'workouts' ? 'page' : undefined}
@@ -198,7 +214,6 @@ export function AccountHome() {
           </button>
         </aside>
         <section className="account-content">
-          <p className="eyebrow">SEU ESPAÇO</p>
           {profile && <h1>Olá, {profile.display_name}.</h1>}
           {error && (
             <div className="message error" role="alert">
@@ -217,6 +232,7 @@ export function AccountHome() {
                 />
               </div>
               {section === 'coach' && <CoachPanel />}
+              {section === 'calendar' && <CalendarPanel />}
             </>
           )}
         </section>

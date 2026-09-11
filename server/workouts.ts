@@ -186,7 +186,29 @@ export function workoutStore(db: PoolClient, userId: string) {
     }
     return { ...plan, version: version === undefined ? 1 : version + 1 };
   }
-  async function start(id: string, templateId: string, version: number) {
+  async function lockOccurrence(scheduledWorkoutId: string | null, sourceId: string) {
+    if (!scheduledWorkoutId) return null;
+    const result = await db.query(
+      `SELECT o.id,s.template_id,s.assignment_recipient_id FROM scheduled_workouts o
+       JOIN workout_schedules s ON s.id=o.schedule_id JOIN profiles p ON p.id=o.user_id
+       WHERE o.id=$1 AND o.user_id=$2 AND o.status IN ('planned','missed')
+         AND o.scheduled_date=(now() AT TIME ZONE p.timezone)::date FOR UPDATE OF o`,
+      [scheduledWorkoutId, userId],
+    );
+    const occurrence = result.rows[0];
+    if (
+      !occurrence ||
+      ![occurrence.template_id, occurrence.assignment_recipient_id].includes(sourceId)
+    )
+      throw new HttpError(409, 'Este treino não está disponível para iniciar hoje.');
+    return occurrence.id as string;
+  }
+  async function start(
+    id: string,
+    templateId: string,
+    version: number,
+    scheduledWorkoutId: string | null = null,
+  ) {
     await db.query('SELECT id FROM profiles WHERE id=$1 FOR UPDATE', [userId]);
     const existing = await db.query(
       'SELECT id,template_id FROM workout_sessions WHERE id=$1 AND user_id=$2',
@@ -210,6 +232,7 @@ export function workoutStore(db: PoolClient, userId: string) {
         'Você já tem um treino em andamento. Retome ou encerre esse treino.',
       );
     const template = await lockTemplate(templateId, version);
+    const occurrenceId = await lockOccurrence(scheduledWorkoutId, templateId);
     const items = await db.query(
       `SELECT te.*,t.rest_seconds FROM template_exercises te JOIN workout_templates t ON t.id=te.template_id WHERE te.template_id=$1 AND te.user_id=$2 ORDER BY te.position`,
       [templateId, userId],
@@ -217,9 +240,14 @@ export function workoutStore(db: PoolClient, userId: string) {
     if (!items.rows.length)
       throw new HttpError(400, 'Adicione exercícios à ficha antes de iniciar.');
     await db.query(
-      'INSERT INTO workout_sessions(id,user_id,template_id,name,notes) VALUES ($1,$2,$3,$4,$5)',
-      [id, userId, templateId, template.name, template.notes],
+      'INSERT INTO workout_sessions(id,user_id,template_id,name,notes,scheduled_workout_id) VALUES ($1,$2,$3,$4,$5,$6)',
+      [id, userId, templateId, template.name, template.notes, occurrenceId],
     );
+    if (occurrenceId)
+      await db.query('UPDATE scheduled_workouts SET session_id=$2,updated_at=now() WHERE id=$1', [
+        occurrenceId,
+        id,
+      ]);
     await db.query(
       `INSERT INTO session_exercises(id,user_id,session_id,exercise_id,position,notes)
        SELECT uuidv7(),user_id,$1,exercise_id,position,notes FROM template_exercises
@@ -238,7 +266,11 @@ export function workoutStore(db: PoolClient, userId: string) {
     );
     return session(id);
   }
-  async function startAssigned(id: string, recipientId: string) {
+  async function startAssigned(
+    id: string,
+    recipientId: string,
+    scheduledWorkoutId: string | null = null,
+  ) {
     await db.query('SELECT id FROM profiles WHERE id=$1 FOR UPDATE', [userId]);
     const existing = await db.query(
       'SELECT id,assignment_recipient_id FROM workout_sessions WHERE id=$1 AND user_id=$2',
@@ -263,9 +295,10 @@ export function workoutStore(db: PoolClient, userId: string) {
       [recipientId, userId],
     );
     if (!assigned.rows[0]) throw new HttpError(404, 'Ficha recebida não encontrada.');
+    const occurrenceId = await lockOccurrence(scheduledWorkoutId, recipientId);
     await db.query(
-      `INSERT INTO workout_sessions(id,user_id,name,notes,assignment_recipient_id,assignment_version_id)
-       VALUES($1,$2,$3,$4,$5,$6)`,
+      `INSERT INTO workout_sessions(id,user_id,name,notes,assignment_recipient_id,assignment_version_id,scheduled_workout_id)
+       VALUES($1,$2,$3,$4,$5,$6,$7)`,
       [
         id,
         userId,
@@ -273,8 +306,14 @@ export function workoutStore(db: PoolClient, userId: string) {
         assigned.rows[0].notes,
         recipientId,
         assigned.rows[0].version_id,
+        occurrenceId,
       ],
     );
+    if (occurrenceId)
+      await db.query('UPDATE scheduled_workouts SET session_id=$2,updated_at=now() WHERE id=$1', [
+        occurrenceId,
+        id,
+      ]);
     await db.query(
       `INSERT INTO session_exercises(id,user_id,session_id,exercise_id,position,notes,exercise_name_snapshot,tracking_mode_snapshot,load_mode_snapshot,load_convention_snapshot)
        SELECT uuidv7(),$1,$2,exercise_id,position,notes,exercise_name_snapshot,tracking_mode_snapshot,load_mode_snapshot,load_convention_snapshot FROM workout_assignment_exercises
@@ -374,6 +413,11 @@ export function workoutStore(db: PoolClient, userId: string) {
            FROM workout_sessions w WHERE w.id=$1 AND w.assignment_recipient_id=r.id AND r.student_id=$2`,
           [id, userId],
         );
+      await db.query(
+        `UPDATE scheduled_workouts o SET status=$3,session_id=CASE WHEN $3='completed' THEN $1 ELSE NULL END,updated_at=now()
+         FROM workout_sessions w WHERE w.id=$1 AND w.user_id=$2 AND o.id=w.scheduled_workout_id`,
+        [id, userId, input.action === 'finish' ? 'completed' : 'planned'],
+      );
     }
     await db.query('UPDATE workout_sessions SET version=version+1 WHERE id=$1 AND user_id=$2', [
       id,
@@ -400,6 +444,11 @@ export function workoutStore(db: PoolClient, userId: string) {
       }
       case 'delete-session': {
         const id = uuid(input.id);
+        await db.query(
+          `UPDATE scheduled_workouts o SET status='planned',session_id=NULL,updated_at=now()
+           FROM workout_sessions w WHERE w.id=$1 AND w.user_id=$2 AND w.status<>'in_progress' AND o.id=w.scheduled_workout_id`,
+          [id, userId],
+        );
         const deleted = await db.query(
           "DELETE FROM workout_sessions WHERE id=$1 AND user_id=$2 AND status <> 'in_progress' RETURNING id",
           [id, userId],
@@ -408,9 +457,18 @@ export function workoutStore(db: PoolClient, userId: string) {
         return { id };
       }
       case 'start':
-        return start(uuid(input.id), uuid(input.templateId), number(input.version, 1, 2147483647));
+        return start(
+          uuid(input.id),
+          uuid(input.templateId),
+          number(input.version, 1, 2147483647),
+          input.scheduledWorkoutId ? uuid(input.scheduledWorkoutId) : null,
+        );
       case 'start-assigned':
-        return startAssigned(uuid(input.id), uuid(input.recipientId));
+        return startAssigned(
+          uuid(input.id),
+          uuid(input.recipientId),
+          input.scheduledWorkoutId ? uuid(input.scheduledWorkoutId) : null,
+        );
       default:
         return changeSession(input);
     }

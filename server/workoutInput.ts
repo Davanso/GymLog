@@ -31,7 +31,7 @@ export function loadKg(value: unknown) {
     throw new HttpError(400, 'Use até três casas decimais para carga.');
   return load;
 }
-function text(value: unknown, max: number, required = false) {
+export function text(value: unknown, max: number, required = false) {
   if (typeof value !== 'string' || value.trim().length > max || (required && !value.trim()))
     throw new HttpError(400, 'Confira o nome e as observações.');
   return value.trim();

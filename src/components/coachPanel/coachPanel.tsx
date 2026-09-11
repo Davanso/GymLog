@@ -279,7 +279,7 @@ export function CoachPanel() {
               {data.students.map((student) => (
                 <li key={student.relationshipId}>
                   <strong>{student.name}</strong>
-                  <span>
+                  <span className="student-actions">
                     <button
                       type="button"
                       className="text-button"

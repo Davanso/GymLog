@@ -22,7 +22,7 @@ export function LoadingState({
     return () => window.clearTimeout(timer);
   }, [delayMs]);
   if (!visible) return null;
-  return createPortal(
+  const content = (
     <span
       className={`gym-loading${fullScreen ? ' gym-loading--fullscreen' : ''}${compact ? ' gym-loading--compact' : ''}`}
       role="status"
@@ -42,7 +42,7 @@ export function LoadingState({
         </span>
       </span>
       <span className="gym-loading__label">{label}</span>
-    </span>,
-    document.body,
+    </span>
   );
+  return fullScreen ? createPortal(content, document.body) : content;
 }
