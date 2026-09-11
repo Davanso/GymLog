@@ -153,6 +153,16 @@ Para uma ficha recebida, os dias aparecem como informação somente leitura. A a
 - A central de notificações fica na aba Calendário e mantém estado lido/não lido.
 - Web Push, preferências por dispositivo e badge do PWA ficam para a Etapa 2. A implementação deverá consumir os eventos persistidos em `app_notifications`.
 
+Para testar a central interna na Etapa 1:
+
+1. entre como coach, atribua uma ficha ou altere os dias de uma ficha já atribuída;
+2. entre como aluno e abra **Calendário > Notificações** para ver o aviso;
+3. como aluno, solicite uma mudança de agenda em uma ficha recebida;
+4. volte ao coach para aprovar ou recusar; a resposta aparecerá na central do aluno.
+
+A central permanece visível quando vazia para deixar claro onde os avisos serão exibidos. Abrir a
+central marca os itens existentes como lidos. Push do navegador ainda não faz parte desta etapa.
+
 ### Etapa 2 — relatórios e push
 
 - Criar uma aba separada “Relatórios”, sem sobrecarregar o calendário.

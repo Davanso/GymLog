@@ -237,7 +237,7 @@ export function calendarStore(db: PoolClient, userId: string) {
     for (const day of selected)
       await db.query(
         `INSERT INTO workout_schedules(user_id,template_id,assignment_recipient_id,created_by,weekday,starts_on)
-         VALUES($1,CASE WHEN $2='personal' THEN $3 ELSE NULL END,CASE WHEN $2='coach' THEN $3 ELSE NULL END,$4,$5,$6)`,
+         VALUES($1,CASE WHEN $2='personal' THEN $3::uuid ELSE NULL END,CASE WHEN $2='coach' THEN $3::uuid ELSE NULL END,$4,$5,$6)`,
         [subjectId, source, sourceId, userId, day, startsOn],
       );
     if (subjectId !== userId)

@@ -50,7 +50,6 @@
   font-weight: 650;
 }
 .calendar-student-select select,
-.schedule-row input[type='date'],
 .request-dialog input,
 .request-dialog textarea,
 .schedule-request textarea {
@@ -367,6 +366,10 @@
 .notification-center li small {
   color: var(--muted);
 }
+.notification-empty {
+  border-left: 3px solid var(--line);
+  padding-left: 12px !important;
+}
 .notification--unread {
   border-left: 3px solid var(--blue);
   padding-left: 12px !important;
@@ -394,7 +397,8 @@
 .request-dialog form > svg {
   color: var(--blue);
 }
-.request-dialog label {
+.request-dialog label,
+.request-date {
   display: grid;
   gap: 7px;
   color: var(--muted);

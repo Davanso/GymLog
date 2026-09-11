@@ -1,0 +1,51 @@
+.localized-date-field {
+  display: grid;
+  grid-template-columns: minmax(64px, 0.65fr) minmax(124px, 1.35fr) minmax(82px, 0.8fr);
+  gap: 7px;
+  min-width: 286px;
+  padding: 0;
+  border: 0;
+}
+
+.localized-date-field .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.localized-date-field label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.localized-date-field select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  padding: 8px 9px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.localized-date-field select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .localized-date-field {
+    min-width: 0;
+  }
+}

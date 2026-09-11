@@ -4,6 +4,7 @@ import type { CalendarDashboard, CalendarEvent } from '../../../shared/calendar'
 import { calendarApi } from '../../services/calendarApi';
 import { workoutApi } from '../../services/workoutApi';
 import { LoadingState } from '../loadingState/loadingState';
+import { LocalizedDateField } from '../localizedDateField/localizedDateField';
 import './calendarPanel.css';
 
 const weekdayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -49,7 +50,10 @@ export function CalendarPanel() {
       subjectId: subjectId || undefined,
       signal: controller.signal,
     })
-      .then(setData)
+      .then((dashboard) => {
+        setData(dashboard);
+        setError('');
+      })
       .catch((cause) => {
         if (!controller.signal.aborted)
           setError(cause instanceof Error ? cause.message : 'Não foi possível carregar a agenda.');
@@ -201,7 +205,7 @@ export function CalendarPanel() {
         </div>
       ) : (
         <>
-          {data.subject.isSelf && !!data.notifications.length && (
+          {data.subject.isSelf && (
             <details
               className="notification-center"
               onToggle={(event) => {
@@ -214,13 +218,23 @@ export function CalendarPanel() {
                 {data.unreadNotifications > 0 && <span>{data.unreadNotifications}</span>}
               </summary>
               <ul>
-                {data.notifications.map((item) => (
-                  <li key={item.id} className={item.readAt ? '' : 'notification--unread'}>
-                    <strong>{item.title}</strong>
-                    <p>{item.body}</p>
-                    <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                {data.notifications.length ? (
+                  data.notifications.map((item) => (
+                    <li key={item.id} className={item.readAt ? '' : 'notification--unread'}>
+                      <strong>{item.title}</strong>
+                      <p>{item.body}</p>
+                      <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                    </li>
+                  ))
+                ) : (
+                  <li className="notification-empty">
+                    <strong>Nenhuma notificação por enquanto</strong>
+                    <p>
+                      Avisos de fichas atribuídas, mudanças de agenda e respostas do coach
+                      aparecerão aqui.
+                    </p>
                   </li>
-                ))}
+                )}
               </ul>
             </details>
           )}
@@ -362,10 +376,14 @@ export function CalendarPanel() {
                       </label>
                     ))}
                   </div>
-                  <label className="start-date">
-                    A partir de
-                    <input type="date" name="startsOn" required defaultValue={data.subject.today} />
-                  </label>
+                  <div className="start-date">
+                    <span>A partir de</span>
+                    <LocalizedDateField
+                      name="startsOn"
+                      defaultValue={data.subject.today}
+                      min={data.subject.today}
+                    />
+                  </div>
                   <button className="secondary-button" disabled={busy}>
                     Salvar dias
                   </button>
@@ -497,10 +515,14 @@ export function CalendarPanel() {
                   {requesting.name} · atualmente em{' '}
                   {new Date(`${requesting.date}T12:00:00`).toLocaleDateString('pt-BR')}
                 </p>
-                <label>
-                  Nova data
-                  <input type="date" name="proposedDate" required min={data.subject.today} />
-                </label>
+                <div className="request-date">
+                  <span>Nova data</span>
+                  <LocalizedDateField
+                    name="proposedDate"
+                    defaultValue={data.subject.today}
+                    min={data.subject.today}
+                  />
+                </div>
                 <label>
                   Mensagem
                   <textarea name="message" maxLength={500} />
