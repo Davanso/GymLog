@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Bell, CalendarDays, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { CalendarDashboard, CalendarEvent } from '../../../shared/calendar';
-import { calendarApi } from '../../services/calendarApi';
+import { calendarApi, readCalendarCache } from '../../services/calendarApi';
 import { workoutApi } from '../../services/workoutApi';
 import { LoadingState } from '../loadingState/loadingState';
 import { LocalizedDateField } from '../localizedDateField/localizedDateField';
@@ -32,9 +32,12 @@ function monthCells(month: string) {
 }
 
 export function CalendarPanel() {
-  const [month, setMonth] = useState(localDate().slice(0, 7));
+  const initialMonth = localDate().slice(0, 7);
+  const [month, setMonth] = useState(initialMonth);
   const [subjectId, setSubjectId] = useState('');
-  const [data, setData] = useState<CalendarDashboard | null>(null);
+  const [data, setData] = useState<CalendarDashboard | null>(() =>
+    readCalendarCache({ month: initialMonth }),
+  );
   const [selectedDate, setSelectedDate] = useState(localDate());
   const [requesting, setRequesting] = useState<CalendarEvent | null>(null);
   const [responses, setResponses] = useState<Record<string, string>>({});
@@ -44,21 +47,24 @@ export function CalendarPanel() {
   const [reload, setReload] = useState(0);
   const cells = useMemo(() => monthCells(month), [month]);
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
     calendarApi(undefined, {
       month,
       subjectId: subjectId || undefined,
-      signal: controller.signal,
+      refresh: true,
     })
       .then((dashboard) => {
+        if (!active) return;
         setData(dashboard);
         setError('');
       })
       .catch((cause) => {
-        if (!controller.signal.aborted)
+        if (active)
           setError(cause instanceof Error ? cause.message : 'Não foi possível carregar a agenda.');
       });
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, [month, reload, subjectId]);
   async function mutate(input: unknown, message: string) {
     if (busy) return;
@@ -148,6 +154,7 @@ export function CalendarPanel() {
   const selectedSource = data?.schedules.find((item) => item.id === requesting?.sourceId);
   function navigateMonth(amount: number) {
     const next = shiftMonth(month, amount);
+    setData(readCalendarCache({ month: next, subjectId: subjectId || undefined }));
     setMonth(next);
     setSelectedDate(`${next}-01`);
   }
@@ -162,7 +169,14 @@ export function CalendarPanel() {
         {!!data?.students.length && (
           <label className="calendar-student-select">
             Visualizando
-            <select value={subjectId} onChange={(event) => setSubjectId(event.target.value)}>
+            <select
+              value={subjectId}
+              onChange={(event) => {
+                const nextSubject = event.target.value;
+                setData(readCalendarCache({ month, subjectId: nextSubject || undefined }));
+                setSubjectId(nextSubject);
+              }}
+            >
               <option value="">Meu calendário</option>
               {data.students.map((student) => (
                 <option key={student.id} value={student.id}>
@@ -365,12 +379,24 @@ export function CalendarPanel() {
                   </div>
                   <div className="weekday-picker">
                     {weekdayNames.map((name, index) => (
-                      <label key={name}>
+                      <label
+                        key={name}
+                        title={
+                          data.schedules.some(
+                            (item) => item.id !== source.id && item.weekdays.includes(index + 1),
+                          )
+                            ? 'Dia já usado por outra ficha'
+                            : undefined
+                        }
+                      >
                         <input
                           type="checkbox"
                           name="weekday"
                           value={index + 1}
                           defaultChecked={source.weekdays.includes(index + 1)}
+                          disabled={data.schedules.some(
+                            (item) => item.id !== source.id && item.weekdays.includes(index + 1),
+                          )}
                         />
                         <span>{name}</span>
                       </label>

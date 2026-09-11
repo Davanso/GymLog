@@ -1,24 +1,17 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { DayPicker } from '@daypicker/react';
+import { ptBR } from '@daypicker/react/locale';
+import { CalendarDays } from 'lucide-react';
+import '@daypicker/react/style.css';
 import './localizedDateField.css';
 
-const monthNames = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
-];
-
-function parts(value: string) {
+function parseIso(value: string) {
   const [year, month, day] = value.split('-').map(Number);
-  return { year, month, day };
+  return new Date(year, month - 1, day, 12);
+}
+
+function formatIso(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
 }
 
 type LocalizedDateFieldProps = {
@@ -29,84 +22,61 @@ type LocalizedDateFieldProps = {
 
 export function LocalizedDateField({ name, defaultValue, min }: LocalizedDateFieldProps) {
   const id = useId();
-  const initial = parts(defaultValue);
-  const minimum = parts(min || defaultValue);
-  const [year, setYear] = useState(initial.year);
-  const [month, setMonth] = useState(initial.month);
-  const [day, setDay] = useState(initial.day);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const safeDay = Math.min(day, daysInMonth);
-  const value = `${year}-${String(month).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
-  const years = useMemo(
-    () => Array.from({ length: 8 }, (_, index) => minimum.year + index),
-    [minimum.year],
-  );
-  function changeMonth(nextMonth: number) {
-    setMonth(nextMonth);
-    if (year === minimum.year && nextMonth === minimum.month && day < minimum.day)
-      setDay(minimum.day);
-  }
-  function changeYear(nextYear: number) {
-    setYear(nextYear);
-    if (nextYear !== minimum.year) return;
-    if (month < minimum.month) {
-      setMonth(minimum.month);
-      setDay(minimum.day);
-    } else if (month === minimum.month && day < minimum.day) setDay(minimum.day);
-  }
+  const root = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState(() => parseIso(defaultValue));
+  const [open, setOpen] = useState(false);
+  const minimum = min ? parseIso(min) : undefined;
+  const endMonth = new Date(selected.getFullYear() + 8, 11, 1, 12);
+
+  useEffect(() => {
+    function close(event: PointerEvent) {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', escape);
+    };
+  }, []);
 
   return (
-    <fieldset className="localized-date-field">
-      <legend className="sr-only">Escolha a data</legend>
-      <input type="hidden" name={name} value={value} />
-      <label htmlFor={`${id}-day`}>
-        Dia
-        <select
-          id={`${id}-day`}
-          value={safeDay}
-          onChange={(event) => setDay(Number(event.target.value))}
-        >
-          {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((value) => (
-            <option
-              key={value}
-              value={value}
-              disabled={year === minimum.year && month === minimum.month && value < minimum.day}
-            >
-              {String(value).padStart(2, '0')}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label htmlFor={`${id}-month`}>
-        Mês
-        <select
-          id={`${id}-month`}
-          value={month}
-          onChange={(event) => changeMonth(Number(event.target.value))}
-        >
-          {monthNames.map((name, index) => (
-            <option
-              key={name}
-              value={index + 1}
-              disabled={year === minimum.year && index + 1 < minimum.month}
-            >
-              {name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label htmlFor={`${id}-year`}>
-        Ano
-        <select
-          id={`${id}-year`}
-          value={year}
-          onChange={(event) => changeYear(Number(event.target.value))}
-        >
-          {years.map((value) => (
-            <option key={value}>{value}</option>
-          ))}
-        </select>
-      </label>
-    </fieldset>
+    <div className="localized-date-field" ref={root}>
+      <input type="hidden" name={name} value={formatIso(selected)} />
+      <button
+        id={id}
+        className="localized-date-trigger"
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <CalendarDays aria-hidden="true" />
+        <span>{selected.toLocaleDateString('pt-BR')}</span>
+      </button>
+      {open && (
+        <div className="localized-date-popover" role="dialog" aria-label="Escolha uma data">
+          <DayPicker
+            animate
+            mode="single"
+            required
+            locale={ptBR}
+            weekStartsOn={1}
+            selected={selected}
+            defaultMonth={selected}
+            startMonth={minimum}
+            endMonth={endMonth}
+            disabled={minimum ? { before: minimum } : undefined}
+            onSelect={(date) => {
+              setSelected(date);
+              setOpen(false);
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }

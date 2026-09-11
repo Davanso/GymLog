@@ -252,6 +252,13 @@
 .weekday-picker input:focus-visible + span {
   outline: 3px solid #85aaff;
 }
+.weekday-picker input:disabled + span {
+  cursor: not-allowed;
+  border-style: dashed;
+  background: #eef1f5;
+  color: #929baa;
+  opacity: 0.72;
+}
 .start-date {
   display: grid;
   gap: 5px;

@@ -11,7 +11,8 @@ Para coaches, o mesmo calendário permite selecionar um aluno com vínculo ativo
 ## Decisões propostas
 
 - Uma ficha pode ser programada para vários dias da semana.
-- Um dia pode ter mais de uma ficha programada.
+- Cada dia da semana pode pertencer a apenas uma ficha ativa por aluno. Dias já usados ficam
+  indisponíveis nas demais fichas.
 - A programação é opcional; fichas sem dia continuam funcionando normalmente.
 - Treinos avulsos aparecem no calendário mesmo sem programação.
 - Usar dias ISO: segunda-feira `1` até domingo `7`.

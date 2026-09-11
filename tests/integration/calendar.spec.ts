@@ -46,6 +46,8 @@ test('database: personal schedule can be saved and generates calendar occurrence
       ],
     };
     await workouts.execute({ action: 'create', template });
+    const otherTemplate = { ...template, id: randomUUID(), name: 'Outro treino' };
+    await workouts.execute({ action: 'create', template: otherTemplate });
 
     const calendar = calendarStore(db, userId);
     await calendar.execute({
@@ -62,6 +64,22 @@ test('database: personal schedule can be saved and generates calendar occurrence
     assert.ok(
       dashboard.days.some((day) => day.events.some((event) => event.name === template.name)),
     );
+
+    await db.query('SAVEPOINT duplicate_weekday');
+    await assert.rejects(
+      () =>
+        calendar.execute({
+          action: 'save-schedule',
+          source: 'personal',
+          sourceId: otherTemplate.id,
+          subjectId: userId,
+          weekdays: [1],
+          startsOn: '2026-09-01',
+        }),
+      (error: unknown) => (error as { code?: string }).code === '23505',
+    );
+    await db.query('ROLLBACK TO SAVEPOINT duplicate_weekday');
+    await db.query('RELEASE SAVEPOINT duplicate_weekday');
   } finally {
     await db.query('ROLLBACK');
     db.release();

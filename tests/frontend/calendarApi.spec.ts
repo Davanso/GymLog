@@ -1,11 +1,34 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { calendarApi } from '../../src/services/calendarApi.js';
+import {
+  calendarApi,
+  clearCalendarCache,
+  readCalendarCache,
+} from '../../src/services/calendarApi.js';
 import { WorkoutApiError } from '../../src/services/workoutApi.js';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  clearCalendarCache();
+});
+
+test('calendar service deduplicates concurrent reads and keeps the last dashboard cached', async () => {
+  let requests = 0;
+  globalThis.fetch = async () => {
+    requests += 1;
+    return Response.json({ month: '2026-09', days: [] });
+  };
+  const options = { month: '2026-09' };
+  const [first, second] = await Promise.all([
+    calendarApi(undefined, { ...options, refresh: true }),
+    calendarApi(undefined, { ...options, refresh: true }),
+  ]);
+  assert.equal(requests, 1);
+  assert.equal(first, second);
+  assert.equal(readCalendarCache(options), first);
+  await calendarApi(undefined, options);
+  assert.equal(requests, 1);
 });
 
 test('calendar service sends month and subject and posts JSON mutations', async () => {
