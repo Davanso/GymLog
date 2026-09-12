@@ -33,7 +33,16 @@ export async function pushApi(input?: unknown) {
 export function withPushTimeout<T>(operation: Promise<T>, message: string, milliseconds = 12_000) {
   return new Promise<T>((resolve, reject) => {
     const timeout = window.setTimeout(() => reject(new Error(message)), milliseconds);
-    operation.then(resolve, reject).finally(() => window.clearTimeout(timeout));
+    operation.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (cause) => {
+        window.clearTimeout(timeout);
+        reject(cause);
+      },
+    );
   });
 }
 

@@ -21,6 +21,21 @@ function deviceName() {
   return `${mobile ? 'Celular' : 'Computador'} · ${navigator.platform || 'Navegador'}`;
 }
 
+async function isBrave() {
+  const browser = navigator as Navigator & { brave?: { isBrave(): Promise<boolean> } };
+  return browser.brave?.isBrave().catch(() => false) ?? false;
+}
+
+function usesKey(subscription: PushSubscription, publicKey: string) {
+  const existing = subscription.options.applicationServerKey;
+  if (!existing) return false;
+  const expected = applicationServerKey(publicKey);
+  const actual = new Uint8Array(existing);
+  return (
+    actual.length === expected.length && actual.every((value, index) => value === expected[index])
+  );
+}
+
 export function PushSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [currentEndpoint, setCurrentEndpoint] = useState('');
@@ -42,18 +57,26 @@ export function PushSettings() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      pushApi(),
-      supported
-        ? registration()
-            .then((serviceWorker) => serviceWorker.pushManager.getSubscription())
-            .then((subscription) => subscription?.endpoint || '')
-        : Promise.resolve(''),
-    ])
-      .then(([nextSettings, endpoint]) => {
+    pushApi()
+      .then(async (nextSettings) => {
         if (!active) return;
         setSettings(nextSettings);
-        setCurrentEndpoint(endpoint);
+        if (!supported) return;
+        try {
+          const serviceWorker = await registration();
+          const subscription = await withPushTimeout(
+            serviceWorker.pushManager.getSubscription(),
+            'Não foi possível consultar a inscrição deste navegador.',
+          );
+          if (active) setCurrentEndpoint(subscription?.endpoint || '');
+        } catch (cause) {
+          if (active)
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : 'Não foi possível consultar este dispositivo.',
+            );
+        }
       })
       .catch((cause) => {
         if (active)
@@ -79,10 +102,20 @@ export function PushSettings() {
   }
 
   async function enable() {
-    const permission = await Notification.requestPermission();
+    const permission = await withPushTimeout(
+      Notification.requestPermission(),
+      'O navegador não concluiu a solicitação de permissão.',
+    );
     if (permission !== 'granted') throw new Error('Permissão de notificação não concedida.');
     const serviceWorker = await registration();
-    const existing = await serviceWorker.pushManager.getSubscription();
+    let existing = await withPushTimeout(
+      serviceWorker.pushManager.getSubscription(),
+      'Não foi possível consultar a inscrição deste navegador.',
+    );
+    if (existing && !usesKey(existing, settings!.publicKey)) {
+      await existing.unsubscribe();
+      existing = null;
+    }
     let subscription = existing;
     try {
       subscription ||= await withPushTimeout(
@@ -93,9 +126,18 @@ export function PushSettings() {
         'O serviço push não respondeu. Confira as permissões do navegador e tente novamente.',
       );
     } catch (cause) {
+      if (
+        cause instanceof DOMException &&
+        /push service|registration failed/i.test(cause.message) &&
+        (await isBrave())
+      )
+        throw new Error(
+          'No Brave, ative “Usar serviços do Google para mensagens push” em Configurações > Privacidade e segurança e reinicie o navegador.',
+          { cause },
+        );
       if (cause instanceof DOMException && /push service|registration failed/i.test(cause.message))
         throw new Error(
-          'O serviço push deste navegador recusou o registro. Abra o GymLog no Chrome ou Edge e tente novamente.',
+          'O serviço push deste navegador recusou o registro. Verifique a permissão de notificações do navegador e do Windows.',
           { cause },
         );
       throw cause;
