@@ -366,6 +366,23 @@
   padding: 13px 0;
   border-top: 1px solid var(--line);
 }
+.notification-center li > button {
+  display: grid;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ink);
+  text-align: left;
+}
+.notification-read-all {
+  border: 0;
+  background: transparent;
+  padding: 0 0 10px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+}
 .notification-center li p {
   margin: 4px 0;
   color: var(--muted);
@@ -400,6 +417,71 @@
   display: grid;
   gap: 16px;
   padding: 28px;
+}
+.request-detail {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+}
+.request-detail h3,
+.request-detail p {
+  margin: 0;
+}
+.request-detail__people,
+.request-detail__date {
+  color: var(--muted);
+}
+.request-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.request-comparison section {
+  display: grid;
+  gap: 7px;
+  min-height: 92px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f3f6fa;
+}
+.request-comparison section:last-child {
+  background: #edf3ff;
+  color: #1749b7;
+}
+.request-comparison small {
+  font-size: 9px;
+  font-weight: 750;
+}
+.request-detail blockquote {
+  margin: 0;
+  border-left: 3px solid var(--blue);
+  padding: 11px 14px;
+  background: #f8fafc;
+  color: var(--muted);
+}
+.request-detail__decision {
+  display: grid;
+  gap: 10px;
+}
+.request-detail__decision textarea {
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px;
+}
+.request-detail__decision > div {
+  display: flex;
+  gap: 9px;
+}
+.request-detail__result {
+  padding: 14px;
+  border-radius: 11px;
+  background: #edf2f8;
+}
+.request-detail__result p {
+  margin-top: 6px;
 }
 .request-dialog form > svg {
   color: var(--blue);
@@ -462,6 +544,13 @@
   }
   .request-actions {
     grid-column: 1/-1;
+  }
+  .request-comparison {
+    grid-template-columns: 1fr;
+  }
+  .request-detail__decision > div {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 @media (prefers-reduced-motion: reduce) {

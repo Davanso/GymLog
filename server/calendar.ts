@@ -38,6 +38,32 @@ export function calendarWeekdays(value: unknown) {
   return result;
 }
 
+export async function ensureCalendarOccurrences(
+  db: PoolClient,
+  subjectId: string,
+  targetMonth: string,
+) {
+  const start = `${calendarMonth(targetMonth)}-01`;
+  await db.query(
+    `INSERT INTO scheduled_workouts(user_id,schedule_id,scheduled_date,template_id,assignment_version_id)
+     SELECT s.user_id,s.id,d::date,s.template_id,a.assignment_version_id
+     FROM workout_schedules s
+     CROSS JOIN generate_series($2::date,($2::date + interval '1 month - 1 day')::date,interval '1 day') d
+     LEFT JOIN workout_assignment_recipients r ON r.id=s.assignment_recipient_id
+     LEFT JOIN workout_assignments a ON a.id=r.assignment_id
+     WHERE s.user_id=$1 AND s.starts_on<=d::date AND coalesce(s.ends_on,'infinity'::date)>=d::date
+       AND extract(isodow FROM d)::int=s.weekday
+     ON CONFLICT(schedule_id,scheduled_date) DO NOTHING`,
+    [subjectId, start],
+  );
+  await db.query(
+    `UPDATE scheduled_workouts o SET status='missed',updated_at=now()
+     FROM profiles p WHERE o.user_id=$1 AND p.id=o.user_id AND o.status='planned'
+       AND o.scheduled_date < (now() AT TIME ZONE p.timezone)::date`,
+    [subjectId],
+  );
+}
+
 export function calendarStore(db: PoolClient, userId: string) {
   async function profile(id: string) {
     const result = await db.query(
@@ -58,31 +84,16 @@ export function calendarStore(db: PoolClient, userId: string) {
     if (!access.rows[0]) throw new HttpError(403, 'Você não pode acessar este calendário.');
     return access.rows[0];
   }
-  async function notify(recipientId: string, kind: string, title: string, body: string) {
+  async function notify(
+    recipientId: string,
+    kind: string,
+    title: string,
+    body: string,
+    link = '/app?secao=calendario',
+  ) {
     await db.query(
-      `INSERT INTO app_notifications(recipient_id,actor_id,kind,title,body,link) VALUES($1,$2,$3,$4,$5,'/app?secao=calendario')`,
-      [recipientId, userId, kind, title, body],
-    );
-  }
-  async function ensureOccurrences(subjectId: string, targetMonth: string) {
-    const start = `${targetMonth}-01`;
-    await db.query(
-      `INSERT INTO scheduled_workouts(user_id,schedule_id,scheduled_date,template_id,assignment_version_id)
-       SELECT s.user_id,s.id,d::date,s.template_id,a.assignment_version_id
-       FROM workout_schedules s
-       CROSS JOIN generate_series($2::date,($2::date + interval '1 month - 1 day')::date,interval '1 day') d
-       LEFT JOIN workout_assignment_recipients r ON r.id=s.assignment_recipient_id
-       LEFT JOIN workout_assignments a ON a.id=r.assignment_id
-       WHERE s.user_id=$1 AND s.starts_on<=d::date AND coalesce(s.ends_on,'infinity'::date)>=d::date
-         AND extract(isodow FROM d)::int=s.weekday
-       ON CONFLICT(schedule_id,scheduled_date) DO NOTHING`,
-      [subjectId, start],
-    );
-    await db.query(
-      `UPDATE scheduled_workouts o SET status='missed',updated_at=now()
-       FROM profiles p WHERE o.user_id=$1 AND p.id=o.user_id AND o.status='planned'
-         AND o.scheduled_date < (now() AT TIME ZONE p.timezone)::date`,
-      [subjectId],
+      `INSERT INTO app_notifications(recipient_id,actor_id,kind,title,body,link) VALUES($1,$2,$3,$4,$5,$6)`,
+      [recipientId, userId, kind, title, body, link],
     );
   }
   async function schedules(subjectId: string): Promise<ScheduleOption[]> {
@@ -107,7 +118,7 @@ export function calendarStore(db: PoolClient, userId: string) {
   async function dashboard(targetMonth: string, subjectId = userId): Promise<CalendarDashboard> {
     targetMonth = calendarMonth(targetMonth);
     const subject = await assertSubject(subjectId);
-    await ensureOccurrences(subjectId, targetMonth);
+    await ensureCalendarOccurrences(db, subjectId, targetMonth);
     const result = await db.query(
       `SELECT * FROM (
          SELECT o.id,o.scheduled_date::text date,coalesce(t.name,v.name) name,o.status,
@@ -165,15 +176,20 @@ export function calendarStore(db: PoolClient, userId: string) {
       [userId],
     );
     const requests = await db.query(
-      `SELECT q.id,p.display_name "studentName",v.name "workoutName",q.kind,
-        q.proposed_weekdays "proposedWeekdays",q.proposed_date::text "proposedDate",q.message,q.status,q.response,q.created_at "createdAt",
-        (q.coach_id=$2) "canRespond"
-       FROM schedule_change_requests q JOIN profiles p ON p.id=q.student_id
-       JOIN workout_assignment_recipients r ON r.id=q.assignment_recipient_id
-       JOIN workout_assignments a ON a.id=r.assignment_id JOIN workout_assignment_versions v ON v.id=a.assignment_version_id
-       WHERE ($1=$2 AND (q.student_id=$2 OR q.coach_id=$2))
-          OR ($1<>$2 AND q.student_id=$1 AND q.coach_id=$2)
-       ORDER BY (q.status='pending') DESC,q.created_at DESC LIMIT 50`,
+      `SELECT q.id,p.display_name "studentName",coach.display_name "coachName",v.name "workoutName",q.kind,
+        CASE WHEN q.kind='recurring' THEN ARRAY(SELECT s.weekday FROM workout_schedules s
+          WHERE s.assignment_recipient_id=q.assignment_recipient_id AND s.status='active' ORDER BY s.weekday) END "currentWeekdays",
+        q.proposed_weekdays "proposedWeekdays",original.scheduled_date::text "currentDate",
+        q.proposed_date::text "proposedDate",q.message,q.status,q.response,q.created_at "createdAt",
+         (q.coach_id=$2) "canRespond"
+        FROM schedule_change_requests q JOIN profiles p ON p.id=q.student_id
+        JOIN profiles coach ON coach.id=q.coach_id
+        JOIN workout_assignment_recipients r ON r.id=q.assignment_recipient_id
+        JOIN workout_assignments a ON a.id=r.assignment_id JOIN workout_assignment_versions v ON v.id=a.assignment_version_id
+        LEFT JOIN scheduled_workouts original ON original.id=q.scheduled_workout_id
+        WHERE ($1=$2 AND (q.student_id=$2 OR q.coach_id=$2))
+           OR ($1<>$2 AND q.student_id=$1 AND q.coach_id=$2)
+        ORDER BY (q.status='pending') DESC,q.created_at DESC`,
       [subjectId, userId],
     );
     const notificationRows =
@@ -277,9 +293,9 @@ export function calendarStore(db: PoolClient, userId: string) {
         throw new HttpError(400, 'Escolha hoje ou uma data futura.');
       values = [null, scheduledWorkoutId, proposedDate];
     }
-    await db.query(
+    const created = await db.query(
       `INSERT INTO schedule_change_requests(student_id,coach_id,assignment_recipient_id,kind,proposed_weekdays,scheduled_workout_id,proposed_date,message)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
       [
         userId,
         assigned.rows[0].coach_id,
@@ -295,7 +311,10 @@ export function calendarStore(db: PoolClient, userId: string) {
       assigned.rows[0].coach_id,
       'schedule_request',
       'Nova solicitação de agenda',
-      'Um aluno solicitou uma mudança de dias.',
+      kind === 'one_off'
+        ? 'Um aluno solicitou uma nova data para o treino.'
+        : 'Um aluno solicitou uma mudança nos dias de treino.',
+      `/app?secao=calendario&solicitacao=${created.rows[0].id}`,
     );
     return { ok: true };
   }
@@ -363,6 +382,7 @@ export function calendarStore(db: PoolClient, userId: string) {
       `schedule_request_${decision}`,
       decision === 'approved' ? 'Mudança de agenda aprovada' : 'Mudança de agenda recusada',
       response,
+      `/app?secao=calendario&solicitacao=${request.id}`,
     );
     return { ok: true };
   }
@@ -371,7 +391,15 @@ export function calendarStore(db: PoolClient, userId: string) {
     if (input.action === 'save-schedule') return replaceSchedule(input);
     if (input.action === 'request-change') return requestChange(input);
     if (input.action === 'respond-request') return respond(input);
-    if (input.action === 'read-notifications') {
+    if (input.action === 'read-notification') {
+      const id = uuid(input.id);
+      await db.query(
+        'UPDATE app_notifications SET read_at=coalesce(read_at,now()) WHERE id=$1 AND recipient_id=$2',
+        [id, userId],
+      );
+      return { ok: true };
+    }
+    if (input.action === 'read-notifications' || input.action === 'read-all-notifications') {
       await db.query(
         'UPDATE app_notifications SET read_at=coalesce(read_at,now()) WHERE recipient_id=$1',
         [userId],

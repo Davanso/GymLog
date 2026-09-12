@@ -41,6 +41,9 @@ export function CalendarPanel() {
   const [selectedDate, setSelectedDate] = useState(localDate());
   const [requesting, setRequesting] = useState<CalendarEvent | null>(null);
   const [responses, setResponses] = useState<Record<string, string>>({});
+  const [selectedRequestId, setSelectedRequestId] = useState(
+    () => new URLSearchParams(window.location.search).get('solicitacao') || '',
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -152,6 +155,20 @@ export function CalendarPanel() {
   }
   const day = data?.days.find((item) => item.date === selectedDate);
   const selectedSource = data?.schedules.find((item) => item.id === requesting?.sourceId);
+  const selectedRequest = data?.requests.find((item) => item.id === selectedRequestId);
+  function openRequest(id: string) {
+    setSelectedRequestId(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('secao', 'calendario');
+    url.searchParams.set('solicitacao', id);
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  }
+  function closeRequest() {
+    setSelectedRequestId('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('solicitacao');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  }
   function navigateMonth(amount: number) {
     const next = shiftMonth(month, amount);
     setData(readCalendarCache({ month: next, subjectId: subjectId || undefined }));
@@ -220,24 +237,40 @@ export function CalendarPanel() {
       ) : (
         <>
           {data.subject.isSelf && (
-            <details
-              className="notification-center"
-              onToggle={(event) => {
-                if ((event.currentTarget as HTMLDetailsElement).open && data.unreadNotifications)
-                  void mutate({ action: 'read-notifications' }, '');
-              }}
-            >
+            <details className="notification-center">
               <summary>
                 <Bell aria-hidden="true" /> Notificações{' '}
                 {data.unreadNotifications > 0 && <span>{data.unreadNotifications}</span>}
               </summary>
+              {!!data.unreadNotifications && (
+                <button
+                  type="button"
+                  className="notification-read-all"
+                  onClick={() => void mutate({ action: 'read-all-notifications' }, '')}
+                >
+                  Marcar todas como lidas
+                </button>
+              )}
               <ul>
                 {data.notifications.length ? (
                   data.notifications.map((item) => (
                     <li key={item.id} className={item.readAt ? '' : 'notification--unread'}>
-                      <strong>{item.title}</strong>
-                      <p>{item.body}</p>
-                      <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!item.readAt)
+                            void mutate({ action: 'read-notification', id: item.id }, '');
+                          const requestId = new URL(
+                            item.link,
+                            window.location.origin,
+                          ).searchParams.get('solicitacao');
+                          if (requestId) openRequest(requestId);
+                        }}
+                      >
+                        <strong>{item.title}</strong>
+                        <p>{item.body}</p>
+                        <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                      </button>
                     </li>
                   ))
                 ) : (
@@ -447,7 +480,7 @@ export function CalendarPanel() {
               <p className="eyebrow">SOLICITAÇÕES</p>
               <h3>Mudanças de agenda</h3>
               {data.requests.map((request) => (
-                <article key={request.id}>
+                <article key={request.id} onClick={() => openRequest(request.id)}>
                   <div>
                     <strong>{request.workoutName}</strong>
                     <p>
@@ -558,6 +591,132 @@ export function CalendarPanel() {
                 </button>
               </form>
             </dialog>
+          )}
+          {selectedRequestId && selectedRequest && (
+            <dialog open className="request-dialog request-detail-dialog">
+              <div className="request-detail">
+                <button
+                  type="button"
+                  className="dialog-close"
+                  aria-label="Fechar"
+                  onClick={closeRequest}
+                >
+                  <X />
+                </button>
+                <p className="eyebrow">SOLICITAÇÃO DE MUDANÇA</p>
+                <h3>{selectedRequest.workoutName}</h3>
+                <p className="request-detail__people">
+                  <strong>{selectedRequest.studentName}</strong> solicitou ao coach{' '}
+                  {selectedRequest.coachName}
+                </p>
+                <div className="request-comparison">
+                  <section>
+                    <small>AGENDA ATUAL</small>
+                    <strong>
+                      {selectedRequest.kind === 'recurring'
+                        ? selectedRequest.currentWeekdays
+                            ?.map((value) => weekdayNames[value - 1])
+                            .join(', ') || 'Sem dias definidos'
+                        : selectedRequest.currentDate
+                          ? new Date(`${selectedRequest.currentDate}T12:00:00`).toLocaleDateString(
+                              'pt-BR',
+                            )
+                          : 'Data indisponível'}
+                    </strong>
+                  </section>
+                  <section>
+                    <small>SOLICITAÇÃO DO ALUNO</small>
+                    <strong>
+                      {selectedRequest.kind === 'recurring'
+                        ? selectedRequest.proposedWeekdays
+                            ?.map((value) => weekdayNames[value - 1])
+                            .join(', ')
+                        : selectedRequest.proposedDate
+                          ? new Date(`${selectedRequest.proposedDate}T12:00:00`).toLocaleDateString(
+                              'pt-BR',
+                            )
+                          : '—'}
+                    </strong>
+                  </section>
+                </div>
+                {selectedRequest.message && <blockquote>{selectedRequest.message}</blockquote>}
+                <small className="request-detail__date">
+                  Enviada em {new Date(selectedRequest.createdAt).toLocaleString('pt-BR')}
+                </small>
+                {selectedRequest.status === 'pending' && selectedRequest.canRespond ? (
+                  <div className="request-detail__decision">
+                    <textarea
+                      aria-label="Observação para o aluno"
+                      maxLength={500}
+                      placeholder="Observação opcional"
+                      value={responses[selectedRequest.id] ?? ''}
+                      onChange={(event) =>
+                        setResponses((current) => ({
+                          ...current,
+                          [selectedRequest.id]: event.target.value,
+                        }))
+                      }
+                    />
+                    <div>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={busy}
+                        onClick={() =>
+                          void mutate(
+                            {
+                              action: 'respond-request',
+                              id: selectedRequest.id,
+                              decision: 'approved',
+                              response: responses[selectedRequest.id] ?? '',
+                            },
+                            'Solicitação aprovada.',
+                          )
+                        }
+                      >
+                        Aprovar mudança
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy}
+                        onClick={() =>
+                          void mutate(
+                            {
+                              action: 'respond-request',
+                              id: selectedRequest.id,
+                              decision: 'rejected',
+                              response: responses[selectedRequest.id] ?? '',
+                            },
+                            'Solicitação recusada.',
+                          )
+                        }
+                      >
+                        Recusar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={`request-detail__result request-status--${selectedRequest.status}`}
+                  >
+                    <strong>
+                      {selectedRequest.status === 'approved'
+                        ? 'Solicitação aprovada'
+                        : selectedRequest.status === 'rejected'
+                          ? 'Solicitação recusada'
+                          : 'Aguardando resposta do coach'}
+                    </strong>
+                    {selectedRequest.response && <p>{selectedRequest.response}</p>}
+                  </div>
+                )}
+              </div>
+            </dialog>
+          )}
+          {selectedRequestId && !selectedRequest && (
+            <p className="message error" role="alert">
+              Esta solicitação não está mais disponível para sua conta.
+            </p>
           )}
         </>
       )}

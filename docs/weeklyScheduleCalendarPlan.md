@@ -167,7 +167,7 @@ central marca os itens existentes como lidos. Push do navegador ainda não faz p
 ### Etapa 2 — relatórios e push
 
 - Criar uma aba separada “Relatórios”, sem sobrecarregar o calendário.
-- Oferecer resumos semanal e mensal de aderência, duração, séries, faltas e evolução de carga.
+- Oferecer resumos semanal e mensal de aderência, duração, séries, faltas e evolução de carga e repetições. Para cada sessão, mostrar a carga máxima e quantas repetições foram feitas exatamente com ela; não exibir volume em `kg·rep` nesta visão.
 - Permitir que o coach consulte os mesmos resumos no contexto de um aluno autorizado.
 - Adicionar PWA, Service Worker, assinaturas Web Push e preferências de notificação por categoria/dispositivo.
 

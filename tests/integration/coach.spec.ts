@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { coachStore } from '../../server/coach.js';
 import { HttpError } from '../../server/http.js';
+import { reportsStore } from '../../server/reports.js';
 import { workoutStore } from '../../server/workouts.js';
 import type { Session, TemplateDraft } from '../../shared/workouts.js';
 
@@ -106,6 +107,14 @@ test('database: coach invitation, immutable assignment, student execution and sh
       version: session.version,
     })) as Session;
     assert.equal(session.status, 'completed');
+    const report = await reportsStore(db, studentId).dashboard(
+      'month',
+      new Date().toISOString().slice(0, 10),
+      studentId,
+      exercise.id,
+    );
+    assert.equal(report.evolution[0].bestLoad, 22);
+    assert.equal(report.evolution[0].bestReps, 11);
 
     await db.query("SELECT set_config('gymlog.user_id',$1,true)", [coachId]);
     const history = await coach.studentHistory(studentId);

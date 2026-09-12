@@ -43,6 +43,16 @@ test('calendar service sends month and subject and posts JSON mutations', async 
   assert.equal(requests[1], '/api/calendar|POST|{"action":"read-notifications"}');
 });
 
+test('calendar service sends individual notification reads', async () => {
+  let body = '';
+  globalThis.fetch = async (_input, init) => {
+    body = String(init?.body || '');
+    return Response.json({ ok: true });
+  };
+  await calendarApi({ action: 'read-notification', id: 'notification-id' });
+  assert.equal(body, '{"action":"read-notification","id":"notification-id"}');
+});
+
 test('calendar service preserves API errors', async () => {
   globalThis.fetch = async () => Response.json({ error: 'Agenda indisponível.' }, { status: 403 });
   await assert.rejects(

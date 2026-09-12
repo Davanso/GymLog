@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { calendarStore } from '../../server/calendar.js';
+import { reportsStore } from '../../server/reports.js';
 import { workoutStore } from '../../server/workouts.js';
 import type { TemplateDraft } from '../../shared/workouts.js';
 
@@ -64,6 +65,13 @@ test('database: personal schedule can be saved and generates calendar occurrence
     assert.ok(
       dashboard.days.some((day) => day.events.some((event) => event.name === template.name)),
     );
+
+    const report = await reportsStore(db, userId).dashboard('month', '2026-09-11');
+    assert.equal(report.days.length, 30);
+    assert.ok(report.summary.planned > 0);
+    assert.equal(report.summary.completedSessions, 0);
+    assert.equal(report.summary.adherence, 0);
+    assert.equal(report.subject.id, userId);
 
     await db.query('SAVEPOINT duplicate_weekday');
     await assert.rejects(

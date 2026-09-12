@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CalendarDays, LogOut } from 'lucide-react';
+import { BarChart3, CalendarDays, LogOut } from 'lucide-react';
 import { auth } from '../../services/auth';
 import { CoachPanel } from '../coachPanel/coachPanel';
 import { CalendarPanel } from '../calendarPanel/calendarPanel';
 import { LoadingState } from '../loadingState/loadingState';
+import { ReportsPanel } from '../reportsPanel/reportsPanel';
 import { Workouts } from '../workouts/workouts';
 import './accountHome.css';
 
@@ -31,13 +32,15 @@ export function AccountHome() {
   const [workoutsReady, setWorkoutsReady] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(storedSidebarPreference);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [section, setSection] = useState<'workouts' | 'calendar' | 'coach'>(() => {
+  const [section, setSection] = useState<'workouts' | 'calendar' | 'reports' | 'coach'>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.has('convite')
       ? 'coach'
-      : params.get('secao') === 'calendario'
-        ? 'calendar'
-        : 'workouts';
+      : params.get('secao') === 'relatorios'
+        ? 'reports'
+        : params.get('secao') === 'calendario'
+          ? 'calendar'
+          : 'workouts';
   });
   useEffect(() => {
     const controller = new AbortController();
@@ -97,7 +100,7 @@ export function AccountHome() {
       return !collapsed;
     });
   }
-  function changeSection(next: 'workouts' | 'calendar' | 'coach') {
+  function changeSection(next: 'workouts' | 'calendar' | 'reports' | 'coach') {
     const change = () => {
       setSection(next);
       setMobileMenuOpen(false);
@@ -167,6 +170,16 @@ export function AccountHome() {
           <nav aria-label="Menu principal">
             <button
               type="button"
+              className={`sidebar-tab${section === 'reports' ? ' sidebar-tab--active' : ''}`}
+              aria-label="Relatórios"
+              aria-current={section === 'reports' ? 'page' : undefined}
+              onClick={() => changeSection('reports')}
+            >
+              <BarChart3 className="sidebar-icon" aria-hidden="true" size={19} />
+              <span className="sidebar-label">Relatórios</span>
+            </button>
+            <button
+              type="button"
               className={`sidebar-tab${section === 'calendar' ? ' sidebar-tab--active' : ''}`}
               aria-label="Calendário"
               aria-current={section === 'calendar' ? 'page' : undefined}
@@ -233,6 +246,7 @@ export function AccountHome() {
               </div>
               {section === 'coach' && <CoachPanel />}
               {section === 'calendar' && <CalendarPanel />}
+              {section === 'reports' && <ReportsPanel />}
             </>
           )}
         </section>

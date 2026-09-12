@@ -28,8 +28,11 @@ export type ScheduleChangeRequest = {
   id: string;
   studentName: string;
   workoutName: string;
+  coachName: string;
   kind: 'recurring' | 'one_off';
+  currentWeekdays: number[] | null;
   proposedWeekdays: number[] | null;
+  currentDate: string | null;
   proposedDate: string | null;
   message: string;
   status: 'pending' | 'approved' | 'rejected';
