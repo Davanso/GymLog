@@ -121,6 +121,17 @@ Inicie o servidor de desenvolvimento:
 npm run dev:full
 ```
 
+### Notificações push
+
+O calendário pode instalar o GymLog como PWA e ativar notificações separadamente em cada
+dispositivo. Antes de testar, aplique as migrations pendentes com `npm run db:migrate`, gere um
+par VAPID com `npx web-push generate-vapid-keys` e configure no servidor
+`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT`. O assunto deve ser uma URL HTTPS ou
+um endereço no formato `mailto:contato@dominio.com`.
+
+Com o app servido por HTTPS — ou em `localhost` — abra Calendário, ative as notificações e use o
+botão **Testar**. A permissão só é solicitada depois dessa ação explícita do usuário.
+
 ### Testes e cobertura
 
 Execute todos os testes unitários e de estrutura com:

@@ -1,0 +1,73 @@
+.push-settings {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+}
+.push-settings > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.push-settings > header svg {
+  color: var(--blue);
+}
+.push-settings h3,
+.push-settings p {
+  margin: 0;
+}
+.push-settings header p,
+.push-settings__notice {
+  color: var(--muted);
+}
+.push-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.push-settings__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.push-settings__actions svg {
+  width: 16px;
+}
+.push-settings fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border: 0;
+  padding: 0;
+}
+.push-settings legend {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 750;
+}
+.push-settings fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.push-settings fieldset:disabled {
+  opacity: 0.55;
+}
+.push-settings__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: #ffffffd9;
+}
+@media (max-width: 600px) {
+  .push-settings fieldset {
+    grid-template-columns: 1fr;
+  }
+}

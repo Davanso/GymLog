@@ -278,10 +278,12 @@ export function ReportsPanel() {
                     {day.sessions > 1 && <b>{day.sessions}</b>}
                   </span>
                   <small>
-                    {new Date(`${day.date}T12:00:00`).toLocaleDateString('pt-BR', {
-                      weekday: 'short',
-                      day: period === 'month' ? '2-digit' : undefined,
-                    })}
+                    <span>
+                      {new Date(`${day.date}T12:00:00`).toLocaleDateString('pt-BR', {
+                        weekday: 'short',
+                      })}
+                    </span>
+                    {period === 'month' && <span>{day.date.slice(-2)}</span>}
                   </small>
                 </div>
               ))}

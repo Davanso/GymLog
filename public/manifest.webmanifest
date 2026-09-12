@@ -1,0 +1,19 @@
+{
+  "name": "GymLog — Diário de treinos",
+  "short_name": "GymLog",
+  "description": "Acompanhe seus treinos, agenda e evolução.",
+  "lang": "pt-BR",
+  "id": "/app",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#14243a",
+  "icons": [
+    {
+      "src": "/gym-log-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

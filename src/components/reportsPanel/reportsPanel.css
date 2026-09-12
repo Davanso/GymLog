@@ -241,8 +241,14 @@
   font-size: 9px;
 }
 .report-bar small {
+  display: grid;
+  min-height: 26px;
+  grid-template-rows: repeat(2, 1em);
+  align-content: start;
+  justify-items: center;
   color: var(--muted);
   font-size: 9px;
+  line-height: 1;
   text-transform: capitalize;
 }
 .evolution-points {

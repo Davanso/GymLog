@@ -5,6 +5,7 @@ import { calendarApi, readCalendarCache } from '../../services/calendarApi';
 import { workoutApi } from '../../services/workoutApi';
 import { LoadingState } from '../loadingState/loadingState';
 import { LocalizedDateField } from '../localizedDateField/localizedDateField';
+import { PushSettings } from '../pushSettings/pushSettings';
 import './calendarPanel.css';
 
 const weekdayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
@@ -237,53 +238,56 @@ export function CalendarPanel() {
       ) : (
         <>
           {data.subject.isSelf && (
-            <details className="notification-center">
-              <summary>
-                <Bell aria-hidden="true" /> Notificações{' '}
-                {data.unreadNotifications > 0 && <span>{data.unreadNotifications}</span>}
-              </summary>
-              {!!data.unreadNotifications && (
-                <button
-                  type="button"
-                  className="notification-read-all"
-                  onClick={() => void mutate({ action: 'read-all-notifications' }, '')}
-                >
-                  Marcar todas como lidas
-                </button>
-              )}
-              <ul>
-                {data.notifications.length ? (
-                  data.notifications.map((item) => (
-                    <li key={item.id} className={item.readAt ? '' : 'notification--unread'}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!item.readAt)
-                            void mutate({ action: 'read-notification', id: item.id }, '');
-                          const requestId = new URL(
-                            item.link,
-                            window.location.origin,
-                          ).searchParams.get('solicitacao');
-                          if (requestId) openRequest(requestId);
-                        }}
-                      >
-                        <strong>{item.title}</strong>
-                        <p>{item.body}</p>
-                        <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="notification-empty">
-                    <strong>Nenhuma notificação por enquanto</strong>
-                    <p>
-                      Avisos de fichas atribuídas, mudanças de agenda e respostas do coach
-                      aparecerão aqui.
-                    </p>
-                  </li>
+            <>
+              <details className="notification-center">
+                <summary>
+                  <Bell aria-hidden="true" /> Notificações{' '}
+                  {data.unreadNotifications > 0 && <span>{data.unreadNotifications}</span>}
+                </summary>
+                {!!data.unreadNotifications && (
+                  <button
+                    type="button"
+                    className="notification-read-all"
+                    onClick={() => void mutate({ action: 'read-all-notifications' }, '')}
+                  >
+                    Marcar todas como lidas
+                  </button>
                 )}
-              </ul>
-            </details>
+                <ul>
+                  {data.notifications.length ? (
+                    data.notifications.map((item) => (
+                      <li key={item.id} className={item.readAt ? '' : 'notification--unread'}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!item.readAt)
+                              void mutate({ action: 'read-notification', id: item.id }, '');
+                            const requestId = new URL(
+                              item.link,
+                              window.location.origin,
+                            ).searchParams.get('solicitacao');
+                            if (requestId) openRequest(requestId);
+                          }}
+                        >
+                          <strong>{item.title}</strong>
+                          <p>{item.body}</p>
+                          <small>{new Date(item.createdAt).toLocaleString('pt-BR')}</small>
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="notification-empty">
+                      <strong>Nenhuma notificação por enquanto</strong>
+                      <p>
+                        Avisos de fichas atribuídas, mudanças de agenda e respostas do coach
+                        aparecerão aqui.
+                      </p>
+                    </li>
+                  )}
+                </ul>
+              </details>
+              <PushSettings />
+            </>
           )}
           <div className="calendar-layout">
             <div className="calendar-card">
